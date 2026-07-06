@@ -38,6 +38,22 @@ Traditional LMS platforms often treat assessment uploads as raw binary download 
 
 ---
 
+## 🔐 Login Credentials
+
+The Xebia LMS Assessment Portal includes separate authentication dashboards and access permissions for different user roles. The following demo credentials are seeded automatically for local evaluation and testing purposes:
+
+| User Role | Email / Username | Password | Access Description |
+| :--- | :--- | :--- | :--- |
+| **Teacher** | `teacher@lms.com` | `teacher123` | Create assessments, upload reference materials, configure deadlines, review submissions, and assign grades. |
+| **Learner** | `learner@lms.com` | `learner123` | View active assessments, preview and download reference files inline, submit assignments, and track marks. |
+
+### Security Notice
+
+> [!IMPORTANT]
+> The credentials above are intended **exclusively** for local development, demonstration, and staging review. In production environments, password strings must be salted and hashed (using bcrypt or similar standard security algorithms), and credentials should be managed via secure authentication providers and environment variables.
+
+---
+
 ## ✨ Features
 
 ### 👨‍🏫 Teacher Portal
