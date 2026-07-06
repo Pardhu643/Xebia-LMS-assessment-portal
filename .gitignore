@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+/node_modules
+assessment-portal/node_modules/
+
+# Next.js Build Output
+.next/
+/.next
+assessment-portal/.next/
+tsconfig.tsbuildinfo
+assessment-portal/tsconfig.tsbuildinfo
+
+# Java Build Output
+target/
+/target
+assessment-portal/backend/target/
+
+# Build & Dist
+build/
+dist/
+
+# Environments
+.env
+.env.local
+.env.*.local
+
+# IDEs
+.idea/
+.vscode/
+
+# Local Uploads Folder
+uploads/
+/uploads
+assessment-portal/backend/uploads/

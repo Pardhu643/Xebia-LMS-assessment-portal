@@ -1,0 +1,85 @@
+export type UserRole = "teacher" | "learner";
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  avatar?: string;
+}
+
+export type QuestionType = "mcq" | "written";
+
+export interface Question {
+  id: string;
+  text: string;
+  type: QuestionType;
+  options?: string[]; // Used for MCQ
+  correctAnswer?: string;
+  marks: number;
+}
+
+export interface Assessment {
+  id: string;
+  title: string;
+  subject: string;
+  batch: string;
+  instructions: string;
+  questionType: QuestionType;
+  questions: Question[];
+  totalMarks: number;
+  deadline: string; // ISO String or YYYY-MM-DDTHH:MM
+  status: "draft" | "published";
+  createdAt: string;
+  fileUrl?: string; // Optional if teacher uploaded an existing file
+  fileName?: string;
+  fileSize?: string;
+  file?: {
+    originalName: string;
+    filename: string;
+    fileUrl: string;
+    mimeType: string;
+    size: number;
+    uploadedAt: string;
+  };
+}
+
+export interface Submission {
+  id: string;
+  assessmentId: string;
+  assessmentTitle: string;
+  subject: string;
+  batch: string;
+  learnerId: string;
+  learnerName: string;
+  answers: { [questionId: string]: string }; // Map of questionId to answer text/option
+  status: "submitted" | "marked";
+  marksObtained?: number;
+  totalMarks: number;
+  feedback?: string;
+  submittedAt: string;
+  submittedFileUrl?: string; // If student submitted a file instead
+  submittedFileName?: string;
+}
+
+export interface Material {
+  id: string;
+  title: string;
+  subject: string;
+  batch: string;
+  fileName: string;
+  fileSize: string;
+  fileUrl: string;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
+export interface ClassInfo {
+  id: string;
+  name: string;
+  batch: string;
+  subject: string;
+  time: string;
+  teacherName: string;
+  room?: string;
+}
