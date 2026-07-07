@@ -47,11 +47,42 @@ public class DataSeeder implements CommandLineRunner {
                 "nextjs15_cheatsheet.pdf"
             };
 
+            String minimalPdf = "%PDF-1.4\n" +
+                    "1 0 obj\n" +
+                    "<< /Type /Catalog /Pages 2 0 R >>\n" +
+                    "endobj\n" +
+                    "2 0 obj\n" +
+                    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>\n" +
+                    "endobj\n" +
+                    "3 0 obj\n" +
+                    "<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /MediaBox [0 0 595 842] /Contents 4 0 R >>\n" +
+                    "endobj\n" +
+                    "4 0 obj\n" +
+                    "<< /Length 65 >>\n" +
+                    "stream\n" +
+                    "BT\n" +
+                    "/F1 12 Tf\n" +
+                    "72 712 Td\n" +
+                    "(Xebia LMS Assessment Portal Reference Material) Tj\n" +
+                    "ET\n" +
+                    "endstream\n" +
+                    "endobj\n" +
+                    "xref\n" +
+                    "0 5\n" +
+                    "0000000000 65535 f \n" +
+                    "0000000009 00000 n \n" +
+                    "0000000058 00000 n \n" +
+                    "0000000115 00000 n \n" +
+                    "0000000251 00000 n \n" +
+                    "trailer\n" +
+                    "<< /Size 5 /Root 1 0 R >>\n" +
+                    "startxref\n" +
+                    "365\n" +
+                    "%%EOF\n";
+
             for (String file : dummyFiles) {
                 java.nio.file.Path filePath = uploadPath.resolve(file);
-                if (!java.nio.file.Files.exists(filePath)) {
-                    java.nio.file.Files.write(filePath, ("%PDF-1.4 dummy content for " + file).getBytes());
-                }
+                java.nio.file.Files.write(filePath, minimalPdf.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             }
         } catch (java.io.IOException e) {
             System.err.println("Failed to create dummy seeded files: " + e.getMessage());
