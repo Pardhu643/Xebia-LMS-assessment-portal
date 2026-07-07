@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useApp } from "../../../lib/context";
 import { Assessment, Question, QuestionType } from "../../../types";
 import { useRouter } from "next/navigation";
+import * as XLSX from "xlsx";
 import {
   ArrowLeft,
   Plus,
@@ -14,7 +15,9 @@ import {
   X,
   FileCheck,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Upload,
+  AlertCircle
 } from "lucide-react";
 
 export default function CreateAssessmentPage() {
@@ -29,6 +32,10 @@ export default function CreateAssessmentPage() {
   const [instructions, setInstructions] = useState("");
   const [questionType, setQuestionType] = useState<QuestionType>("mcq");
   const [deadline, setDeadline] = useState("");
+
+  // Creator Mode State
+  const [creationMode, setCreationMode] = useState<"manual" | "excel">("manual");
+  const [importErrors, setImportErrors] = useState<string[]>([]);
 
   // Questions builder state
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -126,6 +133,128 @@ export default function CreateAssessmentPage() {
     setCorrectMcqAnswer("");
   };
 
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File size exceeds 5MB limit.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json<any>(worksheet);
+
+        const parsedQuestions: Question[] = [];
+        const errors: string[] = [];
+
+        rows.forEach((row, index) => {
+          const rowNum = index + 2; // Row number in Excel sheet (excluding header)
+          
+          const qText = row["Question"] || row["question"] || row["QUESTION"];
+          const optA = row["Option A"] || row["option a"] || row["OptionA"] || row["optionA"];
+          const optB = row["Option B"] || row["option b"] || row["OptionB"] || row["optionB"];
+          const optC = row["Option C"] || row["option c"] || row["OptionC"] || row["optionC"];
+          const optD = row["Option D"] || row["option d"] || row["OptionD"] || row["optionD"];
+          const correctAnswer = row["Correct Answer"] || row["correct answer"] || row["CorrectAnswer"] || row["correctAnswer"];
+          const marksRaw = row["Marks"] || row["marks"] || row["MARKS"];
+          const qTypeRaw = row["Question Type"] || row["question type"] || row["QuestionType"] || row["questionType"] || "mcq";
+
+          if (!qText || String(qText).trim() === "") {
+            errors.push(`Row ${rowNum}: Question statement is required.`);
+            return;
+          }
+
+          const marks = Number(marksRaw);
+          if (isNaN(marks) || marks <= 0) {
+            errors.push(`Row ${rowNum}: Marks weight must be a positive number.`);
+            return;
+          }
+
+          const qType: QuestionType = String(qTypeRaw).trim().toLowerCase() === "written" ? "written" : "mcq";
+
+          if (qType === "mcq") {
+            const options: string[] = [];
+            if (optA !== undefined && String(optA).trim() !== "") options.push(String(optA).trim());
+            if (optB !== undefined && String(optB).trim() !== "") options.push(String(optB).trim());
+            if (optC !== undefined && String(optC).trim() !== "") options.push(String(optC).trim());
+            if (optD !== undefined && String(optD).trim() !== "") options.push(String(optD).trim());
+
+            if (options.length < 2) {
+              errors.push(`Row ${rowNum}: MCQ question must have at least 2 non-empty options.`);
+              return;
+            }
+
+            if (correctAnswer === undefined || String(correctAnswer).trim() === "") {
+              errors.push(`Row ${rowNum}: Correct Answer is required for MCQ question.`);
+              return;
+            }
+
+            const cleanCorrectAnswer = String(correctAnswer).trim();
+            let matchedCorrectAnswer = "";
+            const lowerClean = cleanCorrectAnswer.toLowerCase();
+            
+            if (lowerClean === "option a" || lowerClean === "a") {
+              matchedCorrectAnswer = options[0] || "";
+            } else if (lowerClean === "option b" || lowerClean === "b") {
+              matchedCorrectAnswer = options[1] || "";
+            } else if (lowerClean === "option c" || lowerClean === "c") {
+              matchedCorrectAnswer = options[2] || "";
+            } else if (lowerClean === "option d" || lowerClean === "d") {
+              matchedCorrectAnswer = options[3] || "";
+            } else {
+              const foundOpt = options.find(opt => opt.toLowerCase() === lowerClean);
+              if (foundOpt) {
+                matchedCorrectAnswer = foundOpt;
+              } else {
+                errors.push(`Row ${rowNum}: Correct Answer ("${cleanCorrectAnswer}") does not match any of the option values or option letters (A, B, C, D).`);
+                return;
+              }
+            }
+
+            parsedQuestions.push({
+              id: "q-excel-" + Date.now() + "-" + index,
+              text: String(qText).trim(),
+              type: "mcq",
+              options,
+              correctAnswer: matchedCorrectAnswer,
+              marks
+            });
+          } else {
+            parsedQuestions.push({
+              id: "q-excel-" + Date.now() + "-" + index,
+              text: String(qText).trim(),
+              type: "written",
+              marks
+            });
+          }
+        });
+
+        if (errors.length > 0) {
+          setImportErrors(errors);
+          if (parsedQuestions.length > 0) {
+            setQuestions(prev => [...prev, ...parsedQuestions]);
+          }
+        } else {
+          setQuestions(prev => [...prev, ...parsedQuestions]);
+          setImportErrors([]);
+          alert(`Successfully imported all ${parsedQuestions.length} questions!`);
+        }
+      } catch (err) {
+        console.error("Error reading Excel:", err);
+        alert("Invalid Excel file format or corrupted file.");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
+
   const handleEditQuestion = (q: Question) => {
     setEditingId(q.id);
     setCurrentQuestionText(q.text);
@@ -153,6 +282,10 @@ export default function CreateAssessmentPage() {
     }
     if (selectedBatches.length === 0) {
       alert("Please select at least one batch.");
+      return;
+    }
+    if (importErrors.length > 0) {
+      alert("Please resolve all validation errors before saving or publishing.");
       return;
     }
 
@@ -195,13 +328,19 @@ export default function CreateAssessmentPage() {
         <div className="flex gap-2">
           <button
             onClick={() => handleSave("draft")}
-            className="bg-white border border-border text-foreground hover:bg-[#F7F8FC] font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer"
+            disabled={importErrors.length > 0}
+            className={`bg-white border border-border text-foreground hover:bg-[#F7F8FC] font-bold text-xs px-4 py-2.5 rounded-xl cursor-pointer transition-all ${
+              importErrors.length > 0 ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
             Save Draft
           </button>
           <button
             onClick={() => handleSave("published")}
-            className="bg-primary hover:bg-primary-dark text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs cursor-pointer"
+            disabled={importErrors.length > 0}
+            className={`bg-primary hover:bg-primary-dark text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs cursor-pointer transition-all ${
+              importErrors.length > 0 ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
             Publish Assessment
           </button>
@@ -372,96 +511,182 @@ export default function CreateAssessmentPage() {
         {/* Dynamic Question Creator Block */}
         <div className="space-y-6 lg:col-span-2">
           
-          {/* Question Builder Form */}
-          <div className="bg-white border border-border p-6 rounded-2xl shadow-xs space-y-4">
-            <h3 className="text-xs font-black text-text-muted uppercase tracking-wider border-b border-border/50 pb-2">
-              {editingId ? "Edit Question Definition" : "Add New Question"}
-            </h3>
+          {/* Creator Mode Tabs */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setCreationMode("manual")}
+              className={`flex-1 text-center py-2.5 rounded-xl font-bold text-xs uppercase cursor-pointer border transition-all ${
+                creationMode === "manual"
+                  ? "bg-primary border-primary text-white shadow-xs"
+                  : "bg-white border-border text-text-muted hover:bg-[#F7F8FC]"
+              }`}
+            >
+              Create Manually
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreationMode("excel")}
+              className={`flex-1 text-center py-2.5 rounded-xl font-bold text-xs uppercase cursor-pointer border transition-all ${
+                creationMode === "excel"
+                  ? "bg-primary border-primary text-white shadow-xs"
+                  : "bg-white border-border text-text-muted hover:bg-[#F7F8FC]"
+              }`}
+            >
+              Import from Excel
+            </button>
+          </div>
 
-            <form onSubmit={handleAddQuestion} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Question Statement</label>
-                <textarea
-                  value={currentQuestionText}
-                  onChange={(e) => setCurrentQuestionText(e.target.value)}
-                  placeholder="e.g. What is the complexity of binary search?"
-                  className="w-full bg-[#F7F8FC] border border-border rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-primary h-20 font-semibold resize-none"
-                  required
-                />
+          {/* Validation Errors Box */}
+          {importErrors.length > 0 && (
+            <div className="bg-rose-50 border border-rose-100 rounded-2xl p-5 space-y-3 animate-fadeIn">
+              <div className="flex items-center gap-2 text-rose-700">
+                <AlertCircle size={18} />
+                <span className="text-xs font-black uppercase tracking-wider">Excel Import Validation Errors ({importErrors.length})</span>
               </div>
+              <p className="text-[11px] text-rose-600 font-semibold">
+                The file was parsed but contains invalid rows. Publishing is blocked until all issues are resolved.
+              </p>
+              <div className="bg-white border border-rose-100 rounded-xl p-3 max-h-32 overflow-y-auto text-[11px] text-rose-700 font-bold space-y-1 custom-scrollbar">
+                {importErrors.map((err, idx) => (
+                  <div key={idx} className="flex items-start gap-1.5">
+                    <span>•</span>
+                    <span>{err}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setImportErrors([])}
+                className="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-[10px] px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+              >
+                Dismiss Validation log
+              </button>
+            </div>
+          )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Marks Weight</label>
+          {/* Excel Import Mode Form */}
+          {creationMode === "excel" ? (
+            <div className="bg-white border border-border p-6 rounded-2xl shadow-xs space-y-5">
+              <h3 className="text-xs font-black text-text-muted uppercase tracking-wider border-b border-border/50 pb-2">
+                Import Spreadsheet
+              </h3>
+              
+              <div className="border-2 border-dashed border-border/80 rounded-2xl p-8 text-center bg-[#F7F8FC]/50 hover:bg-[#F7F8FC] hover:border-primary/50 transition-all flex flex-col items-center justify-center gap-4 relative">
+                <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                  <Upload size={20} />
+                </div>
+                <div>
+                  <span className="font-bold text-xs text-foreground block">Select your spreadsheet file</span>
+                  <span className="text-[10px] text-text-muted block mt-1 leading-relaxed">
+                    Supports Excel (.xlsx, .xls) and CSV (.csv) formats up to 5MB.<br/>
+                    Expected Columns: <code className="bg-white px-1.5 py-0.5 rounded border text-[9px] font-mono text-primary font-black">Question</code>, <code className="bg-white px-1.5 py-0.5 rounded border text-[9px] font-mono text-primary font-black">Option A</code>, <code className="bg-white px-1.5 py-0.5 rounded border text-[9px] font-mono text-primary font-black">Option B</code>, <code className="bg-white px-1.5 py-0.5 rounded border text-[9px] font-mono text-primary font-black">Correct Answer</code>, <code className="bg-white px-1.5 py-0.5 rounded border text-[9px] font-mono text-primary font-black">Marks</code>, <code className="bg-white px-1.5 py-0.5 rounded border text-[9px] font-mono text-primary font-black">Question Type</code>
+                  </span>
+                </div>
+                <div className="relative">
                   <input
-                    type="number"
-                    value={currentQuestionMarks}
-                    onChange={(e) => setCurrentQuestionMarks(Number(e.target.value))}
-                    min={1}
-                    className="w-full bg-[#F7F8FC] border border-border rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-primary font-semibold"
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleImportExcel}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                  />
+                  <button type="button" className="bg-primary hover:bg-primary-dark text-white font-bold text-xs px-4.5 py-2.5 rounded-xl transition-all shadow-xs pointer-events-none">
+                    Choose File
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Question Builder Form */
+            <div className="bg-white border border-border p-6 rounded-2xl shadow-xs space-y-4">
+              <h3 className="text-xs font-black text-text-muted uppercase tracking-wider border-b border-border/50 pb-2">
+                {editingId ? "Edit Question Definition" : "Add New Question"}
+              </h3>
+
+              <form onSubmit={handleAddQuestion} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Question Statement</label>
+                  <textarea
+                    value={currentQuestionText}
+                    onChange={(e) => setCurrentQuestionText(e.target.value)}
+                    placeholder="e.g. What is the complexity of binary search?"
+                    className="w-full bg-[#F7F8FC] border border-border rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-primary h-20 font-semibold resize-none"
                     required
                   />
                 </div>
-              </div>
 
-              {/* Dynamic Option Fields for MCQ */}
-              {questionType === "mcq" && (
-                <div className="space-y-3 pt-2">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Multiple Choice Options</label>
-                    <button
-                      type="button"
-                      onClick={addOptionField}
-                      className="text-xs font-bold text-primary flex items-center gap-1 hover:underline"
-                    >
-                      <Plus size={14} /> Add Option
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    {mcqOptions.map((opt, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        {/* Selector indicator for correct answer */}
-                        <button
-                          type="button"
-                          onClick={() => setCorrectMcqAnswer(opt)}
-                          className={`w-6 h-6 border rounded-lg flex items-center justify-center transition-all ${
-                            correctMcqAnswer === opt && opt !== ""
-                              ? "bg-emerald-50 border-emerald-500 text-emerald-600"
-                              : "border-border text-transparent hover:border-emerald-500"
-                          }`}
-                        >
-                          <Check size={14} />
-                        </button>
-                        <input
-                          type="text"
-                          value={opt}
-                          onChange={(e) => handleOptionChange(idx, e.target.value)}
-                          placeholder={`Option ${idx + 1}`}
-                          className="flex-1 bg-[#F7F8FC] border border-border rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-primary font-semibold"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeOptionField(idx)}
-                          disabled={mcqOptions.length <= 2}
-                          className="p-2 border border-border rounded-xl text-rose-500 hover:bg-rose-50 disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ))}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Marks Weight</label>
+                    <input
+                      type="number"
+                      value={currentQuestionMarks}
+                      onChange={(e) => setCurrentQuestionMarks(Number(e.target.value))}
+                      min={1}
+                      className="w-full bg-[#F7F8FC] border border-border rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-primary font-semibold"
+                      required
+                    />
                   </div>
                 </div>
-              )}
 
-              <button
-                type="submit"
-                className="w-full bg-[#84117C] hover:bg-[#6c0e66] text-white font-bold py-3 rounded-xl text-xs uppercase cursor-pointer"
-              >
-                {editingId ? "Save Question Changes" : "Save Question and Add to List"}
-              </button>
-            </form>
-          </div>
+                {/* Dynamic Option Fields for MCQ */}
+                {questionType === "mcq" && (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Multiple Choice Options</label>
+                      <button
+                        type="button"
+                        onClick={addOptionField}
+                        className="text-xs font-bold text-primary flex items-center gap-1 hover:underline"
+                      >
+                        <Plus size={14} /> Add Option
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {mcqOptions.map((opt, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setCorrectMcqAnswer(opt)}
+                            className={`w-6 h-6 border rounded-lg flex items-center justify-center transition-all ${
+                              correctMcqAnswer === opt && opt !== ""
+                                ? "bg-emerald-50 border-emerald-500 text-emerald-600"
+                                : "border-border text-transparent hover:border-emerald-500"
+                            }`}
+                          >
+                            <Check size={14} />
+                          </button>
+                          <input
+                            type="text"
+                            value={opt}
+                            onChange={(e) => handleOptionChange(idx, e.target.value)}
+                            placeholder={`Option ${idx + 1}`}
+                            className="flex-1 bg-[#F7F8FC] border border-border rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-primary font-semibold"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeOptionField(idx)}
+                            disabled={mcqOptions.length <= 2}
+                            className="p-2 border border-border rounded-xl text-rose-500 hover:bg-rose-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full bg-[#84117C] hover:bg-[#6c0e66] text-white font-bold py-3 rounded-xl text-xs uppercase cursor-pointer"
+                >
+                  {editingId ? "Save Question Changes" : "Save Question and Add to List"}
+                </button>
+              </form>
+            </div>
+          )}
 
           {/* List of Added Questions */}
           <div className="bg-white border border-border p-6 rounded-2xl shadow-xs space-y-4">
@@ -471,6 +696,7 @@ export default function CreateAssessmentPage() {
               </h3>
               {questions.length > 0 && (
                 <button
+                  type="button"
                   onClick={() => setShowPreviewModal(true)}
                   className="text-xs font-bold text-primary flex items-center gap-1 hover:underline cursor-pointer"
                 >
@@ -494,10 +720,12 @@ export default function CreateAssessmentPage() {
                         <span className="text-xs font-bold text-text-muted uppercase tracking-wide">
                           {q.marks} Marks
                         </span>
+                        <span className="text-[10px] font-black uppercase bg-[#84117C]/10 text-[#84117C] border border-[#84117C]/20 px-2 py-0.5 rounded-full">
+                          {q.type}
+                        </span>
                       </div>
                       <span className="font-semibold text-sm text-foreground block">{q.text}</span>
                       
-                      {/* MCQ Option previews */}
                       {q.options && (
                         <div className="grid grid-cols-2 gap-2 mt-2">
                           {q.options.map((opt, i) => (
@@ -519,12 +747,14 @@ export default function CreateAssessmentPage() {
 
                     <div className="flex gap-1">
                       <button
+                        type="button"
                         onClick={() => handleEditQuestion(q)}
                         className="p-2 border border-border rounded-xl text-primary hover:bg-white cursor-pointer"
                       >
                         <Edit2 size={14} />
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleDeleteQuestion(q.id)}
                         className="p-2 border border-border rounded-xl text-rose-500 hover:bg-rose-50 cursor-pointer"
                       >
@@ -607,6 +837,7 @@ export default function CreateAssessmentPage() {
 
             <div className="p-6 border-t border-border bg-white flex justify-end flex-shrink-0">
               <button
+                type="button"
                 onClick={() => setShowPreviewModal(false)}
                 className="bg-zinc-800 hover:bg-zinc-900 text-white font-bold py-3 px-6 rounded-xl text-xs uppercase cursor-pointer"
               >
