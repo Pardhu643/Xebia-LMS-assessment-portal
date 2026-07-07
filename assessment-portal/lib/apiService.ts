@@ -78,10 +78,28 @@ export const apiService = {
   },
 
   // --- SUBMISSIONS ---
-  getSubmissions: async (assessmentId?: string): Promise<Submission[]> => {
+  getSubmissions: async (filters?: {
+    assessmentId?: string;
+    batches?: string[];
+    status?: string;
+    search?: string;
+    timeFilter?: string;
+    sortBy?: string;
+    page?: number;
+    size?: number;
+  }): Promise<Submission[]> => {
     const params = new URLSearchParams();
-    if (assessmentId) {
-      params.set("assessmentId", assessmentId);
+    if (filters) {
+      if (filters.assessmentId) params.set("assessmentId", filters.assessmentId);
+      if (filters.batches && filters.batches.length > 0) {
+        filters.batches.forEach(b => params.append("batches", b));
+      }
+      if (filters.status) params.set("status", filters.status);
+      if (filters.search) params.set("search", filters.search);
+      if (filters.timeFilter) params.set("timeFilter", filters.timeFilter);
+      if (filters.sortBy) params.set("sortBy", filters.sortBy);
+      if (filters.page !== undefined) params.set("page", String(filters.page));
+      if (filters.size !== undefined) params.set("size", String(filters.size));
     }
     const query = params.toString();
     const res = await fetch(`${API_BASE}/submissions${query ? `?${query}` : ""}`);
@@ -106,6 +124,26 @@ export const apiService = {
       body: JSON.stringify({ marks, feedback }),
     });
     if (!res.ok) throw new Error("Failed to grade submission");
+    return res.json();
+  },
+
+  bulkGradeSubmissions: async (items: { id: string; marks: number; feedback: string }[]): Promise<Submission[]> => {
+    const res = await fetch(`${API_BASE}/submissions/bulk-grade`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(items),
+    });
+    if (!res.ok) throw new Error("Failed bulk grading");
+    return res.json();
+  },
+
+  bulkReviewedSubmissions: async (ids: string[]): Promise<Submission[]> => {
+    const res = await fetch(`${API_BASE}/submissions/bulk-reviewed`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(ids),
+    });
+    if (!res.ok) throw new Error("Failed bulk reviewed");
     return res.json();
   },
 

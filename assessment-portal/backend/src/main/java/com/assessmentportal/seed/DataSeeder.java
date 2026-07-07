@@ -115,11 +115,15 @@ public class DataSeeder implements CommandLineRunner {
         userRepository.save(new User(
                 "t-1", "Shan Ali", "teacher@lms.com", "teacher",
                 "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-                "teacher123"));
+                "teacher123", "", ""));
         userRepository.save(new User(
                 "l-1", "Flores Juanita", "learner@lms.com", "learner",
                 "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face",
-                "learner123"));
+                "learner123", "Batch A", "XEB001"));
+        userRepository.save(new User(
+                "l-2", "John Doe", "john@lms.com", "learner",
+                "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
+                "learner123", "Batch C", "XEB002"));
     }
 
     private void seedClasses() {
@@ -142,6 +146,7 @@ public class DataSeeder implements CommandLineRunner {
         a1.setTitle("UI/UX Design Principles Quiz");
         a1.setSubject("UI/UX Design");
         a1.setBatch("Batch A");
+        a1.setBatches(Arrays.asList("Batch A", "Batch B"));
         a1.setInstructions("Answer all questions. You have 30 minutes. Once submitted, answers cannot be edited.");
         a1.setQuestionType("mcq");
         a1.setTotalMarks(30);
@@ -190,6 +195,7 @@ public class DataSeeder implements CommandLineRunner {
         a2.setTitle("React Components & State Written Assessment");
         a2.setSubject("Front-end Development");
         a2.setBatch("Batch B");
+        a2.setBatches(Arrays.asList("Batch B", "Batch C"));
         a2.setInstructions("Write descriptive answers. Max 250 words per question. Marks depend on clarity and correctness.");
         a2.setQuestionType("written");
         a2.setTotalMarks(20);
@@ -226,6 +232,7 @@ public class DataSeeder implements CommandLineRunner {
         a3.setTitle("SQL Queries and Normalization Quiz (Uploaded File)");
         a3.setSubject("Back-end Development");
         a3.setBatch("Batch C");
+        a3.setBatches(Arrays.asList("Batch C"));
         a3.setInstructions("Please download the attached PDF, solve the questions on paper, scan, and upload your answers.");
         a3.setQuestionType("written");
         a3.setTotalMarks(50);
@@ -252,6 +259,7 @@ public class DataSeeder implements CommandLineRunner {
         a4.setTitle("Scrum & Sprint Planning Framework Draft");
         a4.setSubject("Project Management");
         a4.setBatch("Batch D");
+        a4.setBatches(Arrays.asList("Batch D"));
         a4.setInstructions("Draft assessment on Agile frameworks.");
         a4.setQuestionType("mcq");
         a4.setTotalMarks(10);
@@ -287,6 +295,8 @@ public class DataSeeder implements CommandLineRunner {
         s1.setBatch("Batch A");
         s1.setLearnerId("l-1");
         s1.setLearnerName("Flores Juanita");
+        s1.setRollNumber("XEB001");
+        s1.setDeadline(now.plus(2, ChronoUnit.DAYS).toString().substring(0, 16));
         Map<String, String> answers1 = new HashMap<>();
         answers1.put("q-1-1", "User Experience");
         answers1.put("q-1-2", "Haphazard");
@@ -308,6 +318,8 @@ public class DataSeeder implements CommandLineRunner {
         s2.setBatch("Batch B");
         s2.setLearnerId("l-1");
         s2.setLearnerName("Flores Juanita");
+        s2.setRollNumber("XEB001");
+        s2.setDeadline(now.plus(5, ChronoUnit.DAYS).toString().substring(0, 16));
         Map<String, String> answers2 = new HashMap<>();
         answers2.put("q-2-1", "Props are inputs passed into a component from its parent, making them immutable from within the component. State represents local mutable data that is managed within the component itself, which triggers re-renders when updated.");
         answers2.put("q-2-2", "Functional components use the useEffect hook to perform side effects. If no dependency array is provided, it runs on every render. If an empty array [] is passed, it runs once on mount. Cleanups can be returned to execute on unmount.");
@@ -326,6 +338,8 @@ public class DataSeeder implements CommandLineRunner {
         s3.setBatch("Batch C");
         s3.setLearnerId("l-2");
         s3.setLearnerName("John Doe");
+        s3.setRollNumber("XEB002");
+        s3.setDeadline(now.minus(1, ChronoUnit.DAYS).toString().substring(0, 16));
         s3.setAnswers(new HashMap<String, String>());
         s3.setStatus("submitted");
         s3.setTotalMarks(50);

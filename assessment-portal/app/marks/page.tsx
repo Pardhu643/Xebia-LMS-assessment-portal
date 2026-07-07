@@ -17,9 +17,15 @@ export default function MarksPage() {
   // Filter graded submissions
   const gradedList = submissions.filter((s) => {
     if (s.status !== "marked") return false;
-    if (userRole === "learner" && s.learnerId !== userId) return false;
-    if (batchFilter !== "All Batches" && s.batch !== batchFilter) return false;
     if (search && !s.learnerName.toLowerCase().includes(search.toLowerCase()) && !s.assessmentTitle.toLowerCase().includes(search.toLowerCase())) return false;
+    
+    if (userRole === "learner") {
+      if (s.learnerId !== userId) return false;
+      const studentBatch = currentUser?.batch || "Batch A";
+      if (s.batch !== studentBatch) return false;
+    } else {
+      if (batchFilter !== "All Batches" && s.batch !== batchFilter) return false;
+    }
     return true;
   });
 
@@ -44,6 +50,7 @@ export default function MarksPage() {
           onTimeChange={setTimeFilter}
           selectedBatch={batchFilter}
           onBatchChange={setBatchFilter}
+          hideBatch={userRole === "learner"}
         />
       </div>
 

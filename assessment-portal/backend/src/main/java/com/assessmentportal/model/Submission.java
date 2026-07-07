@@ -47,4 +47,8 @@ public class Submission {
     private String submittedFileUrl;
 
     private String submittedFileName;
+
+    private String rollNumber;
+
+    private String deadline;
 }

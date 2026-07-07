@@ -6,6 +6,8 @@ export interface User {
   email: string;
   role: UserRole;
   avatar?: string;
+  batch?: string;
+  rollNumber?: string;
 }
 
 export type QuestionType = "mcq" | "written";
@@ -24,6 +26,7 @@ export interface Assessment {
   title: string;
   subject: string;
   batch: string;
+  batches?: string[];
   instructions: string;
   questionType: QuestionType;
   questions: Question[];
@@ -52,8 +55,10 @@ export interface Submission {
   batch: string;
   learnerId: string;
   learnerName: string;
+  rollNumber?: string;
+  deadline?: string;
   answers: { [questionId: string]: string }; // Map of questionId to answer text/option
-  status: "submitted" | "marked";
+  status: "submitted" | "marked" | "pending" | "missing" | "late";
   marksObtained?: number;
   totalMarks: number;
   feedback?: string;

@@ -73,8 +73,12 @@ export default function MaterialsPage() {
 
   // Filter materials
   const filteredMaterials = materials.filter((item) => {
-    if (batchFilter !== "All Batches" && item.batch !== batchFilter) return false;
     if (search && !item.title.toLowerCase().includes(search.toLowerCase()) && !item.fileName.toLowerCase().includes(search.toLowerCase())) return false;
+    if (userRole === "learner") {
+      const studentBatch = currentUser?.batch || "Batch A";
+      return item.batch === studentBatch;
+    }
+    if (batchFilter !== "All Batches" && item.batch !== batchFilter) return false;
     return true;
   });
 
@@ -98,7 +102,7 @@ export default function MaterialsPage() {
         fileName: uploadedFile.originalName,
         fileSize: (uploadedFile.size / (1024 * 1024)).toFixed(1) + " MB",
         fileUrl: uploadedFile.fileUrl,
-        uploadedBy: currentUser?.name || "Instructor",
+        uploadedBy: currentUser?.name || "Shan Ali",
         uploadedAt: new Date().toISOString()
       };
 
@@ -111,7 +115,7 @@ export default function MaterialsPage() {
       setMaterialFile(null);
     } catch (err) {
       console.error("Error uploading material:", err);
-      alert("Failed to upload file or save material.");
+      alert("Failed to upload material. Please try again.");
     }
   };
 
@@ -124,7 +128,7 @@ export default function MaterialsPage() {
   return (
     <div className="space-y-6">
       
-      {/* Header section */}
+      {/* Header card details */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-foreground">Course Reference Materials</h1>
@@ -140,6 +144,7 @@ export default function MaterialsPage() {
           onTimeChange={setTimeFilter}
           selectedBatch={batchFilter}
           onBatchChange={setBatchFilter}
+          hideBatch={userRole === "learner"}
         />
       </div>
 

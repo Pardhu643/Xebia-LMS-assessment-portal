@@ -18,6 +18,9 @@ interface AppContextType {
   gradeSubmission: (submissionId: string, marks: number, feedback?: string) => Promise<void>;
   uploadMaterial: (material: Material) => Promise<void>;
   deleteMaterial: (id: string) => Promise<void>;
+  bulkGradeSubmissions: (items: { id: string; marks: number; feedback: string }[]) => Promise<void>;
+  bulkReviewedSubmissions: (ids: string[]) => Promise<void>;
+  refreshSubmissions: (filters?: any) => Promise<void>;
   loading: boolean;
 }
 
@@ -35,11 +38,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function loadData() {
       try {
-        // Restore user session from localStorage
         const user = apiService.getCurrentUser();
         setCurrentUser(user);
 
-        // Fetch data from backend API
         const [loadedClasses, loadedAssessments, loadedSubmissions, loadedMaterials] =
           await Promise.all([
             apiService.getClasses(),
@@ -102,6 +103,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSubmissions(updated);
   };
 
+  const handleBulkGradeSubmissions = async (items: { id: string; marks: number; feedback: string }[]) => {
+    await apiService.bulkGradeSubmissions(items);
+    const updated = await apiService.getSubmissions();
+    setSubmissions(updated);
+  };
+
+  const handleBulkReviewedSubmissions = async (ids: string[]) => {
+    await apiService.bulkReviewedSubmissions(ids);
+    const updated = await apiService.getSubmissions();
+    setSubmissions(updated);
+  };
+
+  const handleRefreshSubmissions = async (filters?: any) => {
+    const updated = await apiService.getSubmissions(filters);
+    setSubmissions(updated);
+  };
+
   const handleUploadMaterial = async (material: Material) => {
     await apiService.uploadMaterial(material);
     const updated = await apiService.getMaterials();
@@ -128,6 +146,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteAssessment: handleDeleteAssessment,
         submitAssessment: handleSubmitAssessment,
         gradeSubmission: handleGradeSubmission,
+        bulkGradeSubmissions: handleBulkGradeSubmissions,
+        bulkReviewedSubmissions: handleBulkReviewedSubmissions,
+        refreshSubmissions: handleRefreshSubmissions,
         uploadMaterial: handleUploadMaterial,
         deleteMaterial: handleDeleteMaterial,
         loading

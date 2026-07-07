@@ -32,7 +32,9 @@ export default function AssessmentsPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadSubject, setUploadSubject] = useState("");
-  const [uploadBatch, setUploadBatch] = useState("Batch A");
+  const [uploadBatches, setUploadBatches] = useState<string[]>(["Batch A"]);
+  const [uploadBatchDropdownOpen, setUploadBatchDropdownOpen] = useState(false);
+  const [uploadBatchSearch, setUploadBatchSearch] = useState("");
   const [uploadDeadline, setUploadDeadline] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
 
@@ -61,6 +63,11 @@ export default function AssessmentsPage() {
       return;
     }
 
+    if (uploadBatches.length === 0) {
+      alert("Please select at least one batch.");
+      return;
+    }
+
     try {
       // 1. Upload the file to the backend
       const uploadedFile = await apiService.uploadFile(uploadFile);
@@ -70,7 +77,8 @@ export default function AssessmentsPage() {
         id: "a-" + Date.now(),
         title: uploadTitle,
         subject: uploadSubject,
-        batch: uploadBatch,
+        batch: uploadBatches[0] || "Batch A",
+        batches: uploadBatches,
         instructions: "Please download the attached file, complete the task, and upload your response.",
         questionType: "written",
         questions: [],
@@ -90,6 +98,7 @@ export default function AssessmentsPage() {
       setShowUploadModal(false);
       setUploadTitle("");
       setUploadSubject("");
+      setUploadBatches(["Batch A"]);
       setUploadFile(null);
     } catch (err) {
       console.error("Error uploading file / saving assessment:", err);
@@ -99,9 +108,19 @@ export default function AssessmentsPage() {
 
   // Filter logic
   const filteredAssessments = assessments.filter((a) => {
-    if (batchFilter !== "All Batches" && a.batch !== batchFilter) return false;
-    if (userRole === "learner" && a.status !== "published") return false; // Hide drafts for students
     if (search && !a.title.toLowerCase().includes(search.toLowerCase()) && !a.subject.toLowerCase().includes(search.toLowerCase())) return false;
+    
+    if (userRole === "learner") {
+      if (a.status !== "published") return false;
+      const studentBatch = currentUser?.batch || "Batch A";
+      const hasBatch = a.batches?.includes(studentBatch) || a.batch === studentBatch;
+      if (!hasBatch) return false;
+    } else {
+      if (batchFilter !== "All Batches") {
+        const hasBatch = a.batches?.includes(batchFilter) || a.batch === batchFilter;
+        if (!hasBatch) return false;
+      }
+    }
     return true;
   });
 
@@ -133,6 +152,7 @@ export default function AssessmentsPage() {
           onTimeChange={setTimeFilter}
           selectedBatch={batchFilter}
           onBatchChange={setBatchFilter}
+          hideBatch={userRole === "learner"}
         />
       </div>
 
@@ -321,18 +341,88 @@ export default function AssessmentsPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Batch Assign</label>
-                  <select
-                    value={uploadBatch}
-                    onChange={(e) => setUploadBatch(e.target.value)}
-                    className="w-full bg-[#F7F8FC] border border-border rounded-xl px-3 py-2 text-xs outline-none focus:border-primary cursor-pointer font-semibold"
+                <div className="space-y-1 relative">
+                  <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">Batch Assign</label>
+                  <div
+                    onClick={() => setUploadBatchDropdownOpen(!uploadBatchDropdownOpen)}
+                    className="w-full bg-[#F7F8FC] border border-border rounded-xl px-3 py-2 text-xs outline-none cursor-pointer font-semibold min-h-[38px] flex flex-wrap gap-1 items-center justify-between"
                   >
-                    <option value="Batch A">Batch A</option>
-                    <option value="Batch B">Batch B</option>
-                    <option value="Batch C">Batch C</option>
-                    <option value="Batch D">Batch D</option>
-                  </select>
+                    <div className="flex flex-wrap gap-1 max-w-[90%]">
+                      {uploadBatches.length === 0 ? (
+                        <span className="text-text-muted">Select Batches</span>
+                      ) : (
+                        uploadBatches.map(b => (
+                          <span
+                            key={b}
+                            className="bg-primary/10 text-primary border border-primary/20 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUploadBatches(uploadBatches.filter(item => item !== b));
+                            }}
+                          >
+                            {b}
+                            <span className="hover:text-red-500 cursor-pointer">×</span>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                    <span className="text-text-muted text-[10px]">▼</span>
+                  </div>
+
+                  {uploadBatchDropdownOpen && (
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-border rounded-xl shadow-lg p-2.5 space-y-2 max-h-48 overflow-y-auto">
+                      <input
+                        type="text"
+                        placeholder="Search..."
+                        value={uploadBatchSearch}
+                        onChange={(e) => setUploadBatchSearch(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full bg-[#F7F8FC] border border-border rounded-lg px-2 py-1 text-[11px] outline-none font-semibold"
+                      />
+                      <div className="flex items-center gap-2 pb-1.5 border-b border-border/45">
+                        <input
+                          type="checkbox"
+                          id="select-all-modal-batches"
+                          checked={uploadBatches.length === 4}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setUploadBatches(["Batch A", "Batch B", "Batch C", "Batch D"]);
+                            } else {
+                              setUploadBatches([]);
+                            }
+                          }}
+                          className="rounded text-primary focus:ring-primary w-3 h-3 cursor-pointer"
+                        />
+                        <label htmlFor="select-all-modal-batches" className="text-[11px] font-bold text-foreground cursor-pointer select-none">
+                          Select All
+                        </label>
+                      </div>
+                      <div className="space-y-1 pt-1">
+                        {["Batch A", "Batch B", "Batch C", "Batch D"].filter(b => b.toLowerCase().includes(uploadBatchSearch.toLowerCase())).map(b => (
+                          <div key={b} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id={`modal-batch-${b}`}
+                              checked={uploadBatches.includes(b)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setUploadBatches([...uploadBatches, b]);
+                                } else {
+                                  setUploadBatches(uploadBatches.filter(item => item !== b));
+                                }
+                              }}
+                              className="rounded text-primary focus:ring-primary w-3 h-3 cursor-pointer"
+                            />
+                            <label htmlFor={`modal-batch-${b}`} className="text-[11px] font-semibold text-foreground cursor-pointer select-none flex-grow">
+                              {b}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Deadline Date & Time</label>

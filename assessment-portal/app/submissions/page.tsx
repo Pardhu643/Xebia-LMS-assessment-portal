@@ -1,36 +1,46 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useApp } from "../../lib/context";
 import { Submission } from "../../types";
-import Filters from "../../components/filters/Filters";
-import { FileText, Download, CheckCircle, Clock, Eye, X, Award, FileSpreadsheet, Search } from "lucide-react";
-
-const handleDownloadFile = async (e: React.MouseEvent, fileUrl: string, originalName: string) => {
-  e.preventDefault();
-  try {
-    const res = await fetch(fileUrl);
-    if (!res.ok) throw new Error("Failed to fetch file for download");
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = originalName;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-  } catch (error) {
-    console.error("Error downloading file:", error);
-    window.open(fileUrl, "_blank");
-  }
-};
+import { 
+  FileText, 
+  Download, 
+  Award, 
+  FileSpreadsheet, 
+  Search, 
+  X, 
+  CheckSquare, 
+  SlidersHorizontal,
+  ChevronDown,
+  RefreshCw
+} from "lucide-react";
 
 export default function SubmissionsPage() {
-  const { currentUser, submissions, assessments, gradeSubmission } = useApp();
-  const [timeFilter, setTimeFilter] = useState("All");
-  const [batchFilter, setBatchFilter] = useState("All Batches");
-  const [search, setSearch] = useState("");
+  const { 
+    currentUser, 
+    submissions, 
+    assessments, 
+    gradeSubmission, 
+    bulkGradeSubmissions, 
+    bulkReviewedSubmissions, 
+    refreshSubmissions 
+  } = useApp();
+
+  const userRole = currentUser?.role || "learner";
+
+  // Filter States
+  const [selectedBatches, setSelectedBatches] = useState<string[]>(["Batch A", "Batch B", "Batch C", "Batch D"]);
+  const [batchDropdownOpen, setBatchDropdownOpen] = useState(false);
+  const [batchSearch, setBatchSearch] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("All");
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>("");
+  const [selectedTimeFilter, setSelectedTimeFilter] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<string>("Newest First");
+
+  // Selection state for Bulk Operations
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Review modal state
   const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
@@ -38,7 +48,24 @@ export default function SubmissionsPage() {
   const [feedbackInput, setFeedbackInput] = useState("");
   const [gradingError, setGradingError] = useState("");
 
-  const userRole = currentUser?.role || "learner";
+  // Bulk Grade modal state
+  const [bulkGradeOpen, setBulkGradeOpen] = useState(false);
+  const [bulkGradeMarks, setBulkGradeMarks] = useState<number>(0);
+  const [bulkGradeFeedback, setBulkGradeFeedback] = useState("");
+
+  // Refresh submission list on filter changes
+  useEffect(() => {
+    refreshSubmissions({
+      assessmentId: selectedAssessmentId,
+      batches: selectedBatches,
+      status: selectedStatus === "All" ? "" : selectedStatus,
+      search: searchQuery,
+      timeFilter: selectedTimeFilter,
+      sortBy: sortBy,
+      page: 0,
+      size: 100
+    });
+  }, [selectedAssessmentId, selectedBatches, selectedStatus, searchQuery, selectedTimeFilter, sortBy]);
 
   if (userRole !== "teacher") {
     return (
@@ -48,12 +75,12 @@ export default function SubmissionsPage() {
     );
   }
 
-  // Filter submissions
-  const filteredSubmissions = submissions.filter((s) => {
-    if (batchFilter !== "All Batches" && s.batch !== batchFilter) return false;
-    if (search && !s.learnerName.toLowerCase().includes(search.toLowerCase()) && !s.assessmentTitle.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  // Calculate dynamic dashboard counters based on active filters
+  const pendingCount = submissions.filter(s => s.status === "pending").length;
+  const submittedCount = submissions.filter(s => s.status === "submitted").length;
+  const gradedCount = submissions.filter(s => s.status === "marked").length;
+  const lateCount = submissions.filter(s => s.status === "late").length;
+  const missingCount = submissions.filter(s => s.status === "missing").length;
 
   const handleOpenReview = (sub: Submission) => {
     setSelectedSub(sub);
@@ -75,21 +102,105 @@ export default function SubmissionsPage() {
     setSelectedSub(null);
   };
 
-  const handleExportCSV = () => {
-    // Generate clean CSV file on client-side and trigger download
-    const headers = "Student Name,Assessment,Batch,Subject,Submitted Date,Status,Marks Obtained,Total Marks,Feedback\n";
-    const rows = filteredSubmissions.map(s => 
-      `"${s.learnerName}","${s.assessmentTitle}","${s.batch}","${s.subject}","${new Date(s.submittedAt).toLocaleDateString()}","${s.status}",${s.marksObtained || "N/A"},${s.totalMarks},"${s.feedback || ""}"`
-    ).join("\n");
+  // Bulk Operations Handlers
+  const handleToggleSelect = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedIds(next);
+  };
 
-    const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
+  const handleToggleSelectAllOnPage = () => {
+    if (selectedIds.size === submissions.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(submissions.map(s => s.id)));
+    }
+  };
+
+  const handleBulkReviewed = async () => {
+    if (selectedIds.size === 0) return;
+    if (confirm(`Are you sure you want to mark ${selectedIds.size} submission(s) as Reviewed/Graded?`)) {
+      await bulkReviewedSubmissions(Array.from(selectedIds));
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleBulkGradeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedIds.size === 0) return;
+
+    const items = Array.from(selectedIds).map(id => ({
+      id,
+      marks: bulkGradeMarks,
+      feedback: bulkGradeFeedback
+    }));
+
+    await bulkGradeSubmissions(items);
+    setBulkGradeOpen(false);
+    setSelectedIds(new Set());
+    setBulkGradeFeedback("");
+    setBulkGradeMarks(0);
+  };
+
+  const handleBulkDownloadFiles = () => {
+    const targets = submissions.filter(s => selectedIds.has(s.id) && s.submittedFileUrl);
+    if (targets.length === 0) {
+      alert("No uploaded file submissions found among selected rows.");
+      return;
+    }
+    targets.forEach(s => {
+      const a = document.createElement("a");
+      a.href = s.submittedFileUrl || "";
+      a.download = s.submittedFileName || "submission";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+  };
+
+  const triggerExport = (list: Submission[], format: "csv" | "excel") => {
+    const headers = "Student Name,Roll Number,Assessment,Batch,Subject,Submitted Date,Status,Marks Obtained,Total Marks,Feedback\n";
+    const rows = list.map(s => {
+      const dateStr = s.submittedAt ? new Date(s.submittedAt).toLocaleDateString() : "N/A";
+      const statusLabel = s.status === "marked" ? "Graded" : s.status === "submitted" ? "Submitted" : s.status === "late" ? "Late" : s.status === "missing" ? "Missing" : "Pending";
+      return `"${s.learnerName}","${s.rollNumber || "N/A"}","${s.assessmentTitle}","${s.batch}","${s.subject}","${dateStr}","${statusLabel}",${s.marksObtained !== undefined ? s.marksObtained : "N/A"},${s.totalMarks},"${s.feedback || ""}"`;
+    }).join("\n");
+
+    const mimeType = format === "csv" ? "text/csv;charset=utf-8;" : "application/vnd.ms-excel;charset=utf-8;";
+    const filename = `submissions_export_${Date.now()}.${format === "csv" ? "csv" : "xls"}`;
+
+    const blob = new Blob([headers + rows], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `lms_submissions_export_${Date.now()}.csv`);
+    link.setAttribute("download", filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleDownloadFile = async (e: React.MouseEvent, fileUrl: string, originalName: string) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(fileUrl);
+      if (!res.ok) throw new Error("Failed to fetch file");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = originalName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      window.open(fileUrl, "_blank");
+    }
   };
 
   return (
@@ -98,58 +209,310 @@ export default function SubmissionsPage() {
       {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-foreground">Student Submissions</h1>
-          <p className="text-xs text-text-muted font-semibold mt-1">Grade interactive MCQ response sets or review attached essay answer sheets.</p>
+          <h1 className="text-2xl font-black text-foreground">Submissions Hub</h1>
+          <p className="text-xs text-text-muted font-semibold mt-1">Grade response sets, view virtual submissions, and track batch timelines.</p>
         </div>
-
-        <Filters
-          selectedTime={timeFilter}
-          onTimeChange={setTimeFilter}
-          selectedBatch={batchFilter}
-          onBatchChange={setBatchFilter}
-        />
       </div>
 
-      {/* Action panel & search */}
-      <div className="flex flex-col md:flex-row gap-4 items-center">
-        <div className="bg-white border border-border p-4 rounded-2xl shadow-xs flex-1 flex items-center gap-3 w-full">
-          <Search size={18} className="text-text-muted" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search submissions by student name or quiz title..."
-            className="bg-transparent border-none outline-none text-xs w-full text-foreground placeholder:text-text-muted"
-          />
+      {/* Dynamic Counters Panel */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="bg-white border border-border/80 p-4 rounded-2xl shadow-2xs flex flex-col justify-between">
+          <span className="text-[10px] font-black text-text-muted uppercase tracking-wider block">Pending</span>
+          <span className="text-2xl font-black text-zinc-600 mt-2 block">{pendingCount}</span>
         </div>
-
-        <button
-          onClick={handleExportCSV}
-          className="bg-accent hover:bg-accent-dark text-white font-bold text-xs py-3 px-4 rounded-xl flex items-center gap-2 cursor-pointer shadow-xs transition-all w-full md:w-auto justify-center"
-        >
-          <FileSpreadsheet size={16} /> Export to CSV
-        </button>
+        <div className="bg-white border border-border/80 p-4 rounded-2xl shadow-2xs flex flex-col justify-between">
+          <span className="text-[10px] font-black text-[#6C1D5F] uppercase tracking-wider block">Submitted</span>
+          <span className="text-2xl font-black text-[#6C1D5F] mt-2 block">{submittedCount}</span>
+        </div>
+        <div className="bg-white border border-border/80 p-4 rounded-2xl shadow-2xs flex flex-col justify-between">
+          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider block">Graded</span>
+          <span className="text-2xl font-black text-emerald-600 mt-2 block">{gradedCount}</span>
+        </div>
+        <div className="bg-white border border-border/80 p-4 rounded-2xl shadow-2xs flex flex-col justify-between">
+          <span className="text-[10px] font-black text-amber-600 uppercase tracking-wider block">Late</span>
+          <span className="text-2xl font-black text-amber-600 mt-2 block">{lateCount}</span>
+        </div>
+        <div className="bg-white border border-border/80 p-4 rounded-2xl shadow-2xs flex flex-col justify-between">
+          <span className="text-[10px] font-black text-rose-600 uppercase tracking-wider block">Missing</span>
+          <span className="text-2xl font-black text-rose-600 mt-2 block">{missingCount}</span>
+        </div>
       </div>
 
-      {/* Table list */}
+      {/* Advanced Filter Bar */}
+      <div className="bg-white border border-border rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="flex items-center gap-2 border-b border-border/50 pb-3">
+          <SlidersHorizontal size={14} className="text-[#6C1D5F]" />
+          <span className="text-xs font-black text-foreground uppercase tracking-wider">Submissions Filters</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          
+          {/* Multi-Select Batches Dropdown */}
+          <div className="space-y-1 relative">
+            <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">Batches</label>
+            <div 
+              onClick={() => setBatchDropdownOpen(!batchDropdownOpen)}
+              className="bg-[#F7F8FC] border border-border rounded-xl px-3 py-2.5 text-xs font-semibold cursor-pointer flex items-center justify-between min-h-[38px]"
+            >
+              <div className="flex flex-wrap gap-0.5 max-w-[85%]">
+                {selectedBatches.length === 0 ? (
+                  <span className="text-text-muted">Select Batches</span>
+                ) : selectedBatches.length === 4 ? (
+                  <span>All Batches</span>
+                ) : (
+                  selectedBatches.map(b => (
+                    <span 
+                      key={b} 
+                      className="bg-primary/10 text-primary text-[8px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedBatches(selectedBatches.filter(item => item !== b));
+                      }}
+                    >
+                      {b.split(" ")[1]}
+                      <span className="hover:text-red-500 font-bold">×</span>
+                    </span>
+                  ))
+                )}
+              </div>
+              <ChevronDown size={14} className="text-text-muted" />
+            </div>
+
+            {batchDropdownOpen && (
+              <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-border rounded-xl shadow-lg p-3 space-y-2 max-h-52 overflow-y-auto">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={batchSearch}
+                  onChange={(e) => setBatchSearch(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full bg-[#F7F8FC] border border-border rounded-lg px-2 py-1 text-xs outline-none font-semibold"
+                />
+                <div className="flex items-center gap-2 pb-1.5 border-b border-border/45">
+                  <input
+                    type="checkbox"
+                    id="select-all-submissions-batches"
+                    checked={selectedBatches.length === 4}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedBatches(["Batch A", "Batch B", "Batch C", "Batch D"]);
+                      } else {
+                        setSelectedBatches([]);
+                      }
+                    }}
+                    className="rounded text-primary focus:ring-primary w-3 h-3 cursor-pointer"
+                  />
+                  <label htmlFor="select-all-submissions-batches" className="text-[11px] font-bold text-foreground cursor-pointer select-none">
+                    Select All
+                  </label>
+                </div>
+                <div className="space-y-1.5 pt-1">
+                  {["Batch A", "Batch B", "Batch C", "Batch D"].filter(b => b.toLowerCase().includes(batchSearch.toLowerCase())).map(b => (
+                    <div key={b} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id={`filter-batch-${b}`}
+                        checked={selectedBatches.includes(b)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedBatches([...selectedBatches, b]);
+                          } else {
+                            setSelectedBatches(selectedBatches.filter(item => item !== b));
+                          }
+                        }}
+                        className="rounded text-primary focus:ring-primary w-3 h-3 cursor-pointer"
+                      />
+                      <label htmlFor={`filter-batch-${b}`} className="text-[11px] font-semibold text-foreground cursor-pointer select-none flex-grow">
+                        {b}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Status Filter */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">Submission Status</label>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="w-full bg-[#F7F8FC] border border-border rounded-xl px-3 py-2.5 text-xs outline-none focus:border-primary font-semibold cursor-pointer"
+            >
+              <option value="All">All Statuses</option>
+              <option value="Pending Submission">Pending Submission</option>
+              <option value="Submitted">Submitted</option>
+              <option value="Reviewed">Reviewed</option>
+              <option value="Graded">Graded</option>
+              <option value="Late Submission">Late Submission</option>
+              <option value="Missing Submission">Missing Submission</option>
+            </select>
+          </div>
+
+          {/* Assessment Filter */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">Assessment</label>
+            <select
+              value={selectedAssessmentId}
+              onChange={(e) => setSelectedAssessmentId(e.target.value)}
+              className="w-full bg-[#F7F8FC] border border-border rounded-xl px-3 py-2.5 text-xs outline-none focus:border-primary font-semibold cursor-pointer"
+            >
+              <option value="">Select Assessment (All)</option>
+              {assessments.filter(a => a.status === "published").map(a => (
+                <option key={a.id} value={a.id}>{a.title}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date Range Filter */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">Date Range</label>
+            <select
+              value={selectedTimeFilter}
+              onChange={(e) => setSelectedTimeFilter(e.target.value)}
+              className="w-full bg-[#F7F8FC] border border-border rounded-xl px-3 py-2.5 text-xs outline-none focus:border-primary font-semibold cursor-pointer"
+            >
+              <option value="All">All Dates</option>
+              <option value="Today">Today</option>
+              <option value="This Week">This Week</option>
+              <option value="This Month">This Month</option>
+            </select>
+          </div>
+
+          {/* Search Box */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-text-muted uppercase tracking-wider block">Search</label>
+            <div className="flex items-center gap-2 bg-[#F7F8FC] border border-border rounded-xl px-3 py-2 w-full">
+              <Search size={14} className="text-text-muted" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Name, roll, title..."
+                className="bg-transparent border-none outline-none text-xs w-full text-foreground placeholder:text-text-muted font-semibold"
+              />
+            </div>
+          </div>
+
+        </div>
+
+        {/* Sorting & Export controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-3 border-t border-border/50 gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black text-text-muted uppercase tracking-wider">Sort By:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-white border border-border text-xs font-semibold text-foreground px-3 py-2 rounded-xl outline-none cursor-pointer"
+            >
+              <option value="Newest First">Newest First</option>
+              <option value="Oldest First">Oldest First</option>
+              <option value="Highest Marks">Highest Marks</option>
+              <option value="Lowest Marks">Lowest Marks</option>
+              <option value="Submission Time">Submission Time</option>
+              <option value="Alphabetical">Alphabetical</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => triggerExport(submissions, "csv")}
+              className="bg-accent hover:bg-accent-dark text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center gap-2 cursor-pointer shadow-xs transition-all"
+            >
+              <FileSpreadsheet size={14} /> Export to CSV
+            </button>
+            <button
+              onClick={() => triggerExport(submissions, "excel")}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center gap-2 cursor-pointer shadow-xs transition-all"
+            >
+              <FileSpreadsheet size={14} /> Export to Excel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Bulk Operations Toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-[#6C1D5F]/5 border border-[#6C1D5F]/20 p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 animate-slideDown">
+          <div className="flex items-center gap-2">
+            <CheckSquare size={16} className="text-[#6C1D5F]" />
+            <span className="text-xs font-bold text-[#6C1D5F]">{selectedIds.size} row(s) selected for bulk operations</span>
+          </div>
+          <div className="flex flex-wrap gap-2.5">
+            <button 
+              onClick={() => setBulkGradeOpen(true)}
+              className="bg-primary hover:bg-primary-dark text-white font-bold text-[11px] px-3.5 py-2 rounded-xl cursor-pointer"
+            >
+              Bulk Grade
+            </button>
+            <button 
+              onClick={handleBulkReviewed}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] px-3.5 py-2 rounded-xl cursor-pointer"
+            >
+              Mark Reviewed
+            </button>
+            <button 
+              onClick={handleBulkDownloadFiles}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] px-3.5 py-2 rounded-xl cursor-pointer"
+            >
+              Download files
+            </button>
+            <button 
+              onClick={() => triggerExport(submissions.filter(s => selectedIds.has(s.id)), "csv")}
+              className="bg-accent hover:bg-accent-dark text-white font-bold text-[11px] px-3.5 py-2 rounded-xl cursor-pointer"
+            >
+              Export Selected
+            </button>
+            <button 
+              onClick={() => setSelectedIds(new Set())}
+              className="text-text-muted hover:text-foreground text-[11px] font-bold px-2 py-1 cursor-pointer"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Submission Table List */}
       <div className="bg-white border border-border rounded-2xl overflow-hidden shadow-xs animate-fadeIn">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs font-semibold">
             <thead>
               <tr className="bg-[#F7F8FC] border-b border-border text-[10px] font-black uppercase text-text-muted">
+                <th className="p-4 sm:p-5 w-12 text-center">
+                  <input
+                    type="checkbox"
+                    checked={submissions.length > 0 && selectedIds.size === submissions.length}
+                    onChange={handleToggleSelectAllOnPage}
+                    className="rounded text-primary focus:ring-primary w-3.5 h-3.5 cursor-pointer"
+                  />
+                </th>
                 <th className="p-4 sm:p-5">Student Name</th>
-                <th className="p-4 sm:p-5">Assessment</th>
+                <th className="p-4 sm:p-5">Roll Number</th>
                 <th className="p-4 sm:p-5">Batch</th>
-                <th className="p-4 sm:p-5">Submitted At</th>
-                <th className="p-4 sm:p-5">Status</th>
+                <th className="p-4 sm:p-5">Assessment</th>
+                <th className="p-4 sm:p-5">Submission Status</th>
+                <th className="p-4 sm:p-5">Submission Time</th>
+                <th className="p-4 sm:p-5">Deadline</th>
                 <th className="p-4 sm:p-5">Marks</th>
                 <th className="p-4 sm:p-5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50 text-foreground">
-              {filteredSubmissions.length > 0 ? (
-                filteredSubmissions.map((sub) => (
+              {submissions.length > 0 ? (
+                submissions.map((sub) => (
                   <tr key={sub.id} className="hover:bg-[#F7F8FC]/50 transition-all">
+                    <td className="p-4 sm:p-5 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(sub.id)}
+                        onChange={() => handleToggleSelect(sub.id)}
+                        className="rounded text-primary focus:ring-primary w-3.5 h-3.5 cursor-pointer"
+                      />
+                    </td>
                     <td className="p-4 sm:p-5">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary text-[10px]">
@@ -158,26 +521,38 @@ export default function SubmissionsPage() {
                         <span>{sub.learnerName}</span>
                       </div>
                     </td>
-                    <td className="p-4 sm:p-5">
-                      <div>
-                        <span className="font-bold block truncate max-w-xs">{sub.assessmentTitle}</span>
-                        <span className="text-[10px] text-text-muted block mt-0.5">{sub.subject}</span>
-                      </div>
-                    </td>
+                    <td className="p-4 sm:p-5 text-text-muted">{sub.rollNumber || "N/A"}</td>
                     <td className="p-4 sm:p-5">
                       <span className="text-[10px] font-black uppercase text-primary bg-primary/5 px-2.5 py-0.5 rounded-full border border-primary/10">
                         {sub.batch}
                       </span>
                     </td>
-                    <td className="p-4 sm:p-5 text-text-muted">
-                      {new Date(sub.submittedAt).toLocaleDateString()}
+                    <td className="p-4 sm:p-5">
+                      <div>
+                        <span className="font-bold block truncate max-w-[200px]">{sub.assessmentTitle}</span>
+                        <span className="text-[10px] text-text-muted block mt-0.5">{sub.subject}</span>
+                      </div>
                     </td>
                     <td className="p-4 sm:p-5">
                       <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
-                        sub.status === "marked" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-primary/5 text-primary border-primary/10"
+                        sub.status === "marked" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                        sub.status === "submitted" ? "bg-primary/5 text-primary border-primary/10" :
+                        sub.status === "late" ? "bg-amber-50 text-amber-700 border-amber-100" :
+                        sub.status === "missing" ? "bg-rose-50 text-rose-700 border-rose-100" :
+                        "bg-zinc-50 text-zinc-500 border-zinc-200"
                       }`}>
-                        {sub.status === "marked" ? "Graded" : "Review Pending"}
+                        {sub.status === "marked" ? "Graded" : 
+                         sub.status === "submitted" ? "Submitted" : 
+                         sub.status === "late" ? "Late Submission" : 
+                         sub.status === "missing" ? "Missing" : 
+                         "Pending"}
                       </span>
+                    </td>
+                    <td className="p-4 sm:p-5 text-text-muted">
+                      {sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : "--"}
+                    </td>
+                    <td className="p-4 sm:p-5 text-text-muted">
+                      {sub.deadline ? new Date(sub.deadline).toLocaleString() : "--"}
                     </td>
                     <td className="p-4 sm:p-5">
                       {sub.status === "marked" ? (
@@ -189,18 +564,22 @@ export default function SubmissionsPage() {
                       )}
                     </td>
                     <td className="p-4 sm:p-5 text-right">
-                      <button
-                        onClick={() => handleOpenReview(sub)}
-                        className="bg-primary hover:bg-primary-dark text-white font-bold text-[11px] px-3.5 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs ml-auto"
-                      >
-                        <Award size={12} /> Review
-                      </button>
+                      {sub.status !== "pending" && sub.status !== "missing" ? (
+                        <button
+                          onClick={() => handleOpenReview(sub)}
+                          className="bg-primary hover:bg-primary-dark text-white font-bold text-[11px] px-3.5 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs ml-auto"
+                        >
+                          <Award size={12} /> Review
+                        </button>
+                      ) : (
+                        <span className="text-text-muted italic text-[11px]">No attempt</span>
+                      )}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center text-xs font-bold text-text-muted uppercase tracking-wider">
+                  <td colSpan={10} className="p-12 text-center text-xs font-bold text-text-muted uppercase tracking-wider">
                     No student submissions found matching filters
                   </td>
                 </tr>
@@ -243,7 +622,6 @@ export default function SubmissionsPage() {
               <div className="space-y-4">
                 <h4 className="font-black text-xs text-text-muted uppercase tracking-wider">Student Responses</h4>
                 
-                {/* Check if student uploaded a file */}
                 {selectedSub.submittedFileName ? (
                   <div className="bg-white border border-border p-6 rounded-2xl flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -263,7 +641,6 @@ export default function SubmissionsPage() {
                     </a>
                   </div>
                 ) : (
-                  // Map questions and answers
                   Object.keys(selectedSub.answers).map((qId, idx) => {
                     const originalAssessment = assessments.find(a => a.id === selectedSub.assessmentId);
                     const qObj = originalAssessment?.questions.find(q => q.id === qId);
@@ -338,6 +715,59 @@ export default function SubmissionsPage() {
                   className="bg-primary hover:bg-primary-dark text-white font-bold py-3.5 rounded-xl text-xs uppercase cursor-pointer shadow-xs text-center w-full transition-all"
                 >
                   Publish Score
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Grade Modal */}
+      {bulkGradeOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white border border-border rounded-2xl w-full max-w-md overflow-hidden shadow-lg animate-fadeIn">
+            <div className="bg-primary p-5 text-white flex justify-between items-center">
+              <h3 className="font-black text-sm uppercase tracking-wider">Bulk Grade {selectedIds.size} Submissions</h3>
+              <button onClick={() => setBulkGradeOpen(false)} className="text-white/80 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleBulkGradeSubmit} className="p-6 space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">Score Awarded (Marks)</label>
+                <input
+                  type="number"
+                  value={bulkGradeMarks}
+                  onChange={(e) => setBulkGradeMarks(Number(e.target.value))}
+                  min={0}
+                  className="w-full bg-[#F7F8FC] border border-border rounded-xl px-3.5 py-2.5 text-sm font-black text-primary"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">Constructive Feedback</label>
+                <textarea
+                  value={bulkGradeFeedback}
+                  onChange={(e) => setBulkGradeFeedback(e.target.value)}
+                  placeholder="Feedback applied to all selected candidates..."
+                  className="w-full bg-[#F7F8FC] border border-border rounded-xl p-3 text-xs outline-none focus:border-primary font-semibold resize-none h-24"
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setBulkGradeOpen(false)}
+                  className="border border-border hover:bg-[#F7F8FC] font-bold py-2.5 px-4 rounded-xl text-xs cursor-pointer text-text-muted"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-5 rounded-xl text-xs uppercase cursor-pointer shadow-xs"
+                >
+                  Apply Grade
                 </button>
               </div>
             </form>

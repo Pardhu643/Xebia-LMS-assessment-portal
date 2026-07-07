@@ -8,13 +8,15 @@ interface FiltersProps {
   onTimeChange: (time: string) => void;
   selectedBatch: string;
   onBatchChange: (batch: string) => void;
+  hideBatch?: boolean;
 }
 
 export default function Filters({
   selectedTime,
   onTimeChange,
   selectedBatch,
-  onBatchChange
+  onBatchChange,
+  hideBatch = false
 }: FiltersProps) {
   const timeOptions = ["All", "Today", "This Week", "This Month"];
 
@@ -37,21 +39,23 @@ export default function Filters({
         ))}
       </div>
 
-      <div className="flex items-center gap-3">
-        <span className="text-xs font-bold text-text-muted uppercase tracking-wider">Batch:</span>
-        <select
-          value={selectedBatch}
-          onChange={(e) => onBatchChange(e.target.value)}
-          className="bg-white border border-border text-xs font-semibold text-foreground px-3 py-2 rounded-xl outline-none focus:border-primary transition-all cursor-pointer"
-        >
-          <option value="All Batches">All Batches</option>
-          {BATCHES.map((batch) => (
-            <option key={batch} value={batch}>
-              {batch}
-            </option>
-          ))}
-        </select>
-      </div>
+      {!hideBatch && (
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-text-muted uppercase tracking-wider">Batch:</span>
+          <select
+            value={selectedBatch}
+            onChange={(e) => onBatchChange(e.target.value)}
+            className="bg-white border border-border text-xs font-semibold text-foreground px-3 py-2 rounded-xl outline-none focus:border-primary transition-all cursor-pointer"
+          >
+            <option value="All Batches">All Batches</option>
+            {BATCHES.map((batch) => (
+              <option key={batch} value={batch}>
+                {batch}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
     </div>
   );
 }

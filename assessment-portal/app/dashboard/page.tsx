@@ -24,6 +24,12 @@ export default function DashboardPage() {
   const userId = currentUser?.id || "";
 
   useEffect(() => {
+    if (currentUser && currentUser.role === "learner" && currentUser.batch) {
+      setBatchFilter(currentUser.batch);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
     async function loadStats() {
       setLoadingStats(true);
       try {
@@ -61,6 +67,7 @@ export default function DashboardPage() {
           onTimeChange={setTimeFilter}
           selectedBatch={batchFilter}
           onBatchChange={setBatchFilter}
+          hideBatch={userRole === "learner"}
         />
       </div>
 

@@ -31,7 +31,7 @@ public class AssessmentController {
         List<Assessment> assessments;
 
         if (batch != null && !batch.isEmpty() && !batch.equals("All Batches")) {
-            assessments = assessmentRepository.findByBatch(batch);
+            assessments = assessmentRepository.findByBatchOrBatchesContaining(batch);
         } else {
             assessments = assessmentRepository.findAll();
         }

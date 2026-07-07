@@ -44,6 +44,8 @@ public class AuthController {
         response.put("email", user.getEmail());
         response.put("role", user.getRole());
         response.put("avatar", user.getAvatar() != null ? user.getAvatar() : "");
+        response.put("batch", user.getBatch() != null ? user.getBatch() : "");
+        response.put("rollNumber", user.getRollNumber() != null ? user.getRollNumber() : "");
         return ResponseEntity.ok(response);
     }
 }

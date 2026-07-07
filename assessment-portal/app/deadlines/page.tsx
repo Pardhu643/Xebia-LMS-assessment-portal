@@ -20,7 +20,13 @@ export default function DeadlinesPage() {
 
   const filteredDeadlines = publishedAssessments
     .filter((a) => {
-      if (batchFilter !== "All Batches" && a.batch !== batchFilter) return false;
+      if (userRole === "learner") {
+        const studentBatch = currentUser?.batch || "Batch A";
+        return a.batches?.includes(studentBatch) || a.batch === studentBatch;
+      }
+      if (batchFilter !== "All Batches") {
+        return a.batches?.includes(batchFilter) || a.batch === batchFilter;
+      }
       return true;
     })
     .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
@@ -47,6 +53,7 @@ export default function DeadlinesPage() {
           onTimeChange={setTimeFilter}
           selectedBatch={batchFilter}
           onBatchChange={setBatchFilter}
+          hideBatch={userRole === "learner"}
         />
       </div>
 

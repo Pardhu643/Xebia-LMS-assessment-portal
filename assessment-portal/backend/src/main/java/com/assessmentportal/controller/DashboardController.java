@@ -50,7 +50,7 @@ public class DashboardController {
         // Get filtered assessments
         List<Assessment> assessments;
         if (batchFilter != null && !batchFilter.isEmpty() && !batchFilter.equals("All Batches")) {
-            assessments = assessmentRepository.findByBatch(batchFilter);
+            assessments = assessmentRepository.findByBatchOrBatchesContaining(batchFilter);
         } else {
             assessments = assessmentRepository.findAll();
         }

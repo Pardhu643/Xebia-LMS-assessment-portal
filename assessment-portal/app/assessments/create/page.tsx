@@ -23,7 +23,9 @@ export default function CreateAssessmentPage() {
 
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
-  const [batch, setBatch] = useState("Batch A");
+  const [selectedBatches, setSelectedBatches] = useState<string[]>(["Batch A"]);
+  const [batchDropdownOpen, setBatchDropdownOpen] = useState(false);
+  const [batchSearch, setBatchSearch] = useState("");
   const [instructions, setInstructions] = useState("");
   const [questionType, setQuestionType] = useState<QuestionType>("mcq");
   const [deadline, setDeadline] = useState("");
@@ -149,12 +151,17 @@ export default function CreateAssessmentPage() {
       alert("Please add at least 1 question to the assessment.");
       return;
     }
+    if (selectedBatches.length === 0) {
+      alert("Please select at least one batch.");
+      return;
+    }
 
     const newAssessment: Assessment = {
       id: "a-" + Date.now(),
       title,
       subject,
-      batch,
+      batch: selectedBatches[0] || "Batch A",
+      batches: selectedBatches,
       instructions,
       questionType,
       questions,
@@ -245,18 +252,88 @@ export default function CreateAssessmentPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Assign Batch</label>
-                <select
-                  value={batch}
-                  onChange={(e) => setBatch(e.target.value)}
-                  className="w-full bg-[#F7F8FC] border border-border rounded-xl px-3 py-2.5 text-xs outline-none focus:border-primary font-semibold cursor-pointer"
+              <div className="space-y-1 relative">
+                <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">Assign Batches</label>
+                <div
+                  onClick={() => setBatchDropdownOpen(!batchDropdownOpen)}
+                  className="w-full bg-[#F7F8FC] border border-border rounded-xl px-3.5 py-2.5 text-xs outline-none cursor-pointer font-semibold min-h-[38px] flex flex-wrap gap-1 items-center justify-between"
                 >
-                  <option value="Batch A">Batch A</option>
-                  <option value="Batch B">Batch B</option>
-                  <option value="Batch C">Batch C</option>
-                  <option value="Batch D">Batch D</option>
-                </select>
+                  <div className="flex flex-wrap gap-1 max-w-[90%]">
+                    {selectedBatches.length === 0 ? (
+                      <span className="text-text-muted">Select Batches</span>
+                    ) : (
+                      selectedBatches.map(b => (
+                        <span
+                          key={b}
+                          className="bg-primary/10 text-primary border border-primary/20 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedBatches(selectedBatches.filter(item => item !== b));
+                          }}
+                        >
+                          {b}
+                          <span className="hover:text-red-500 cursor-pointer">×</span>
+                        </span>
+                      ))
+                    )}
+                  </div>
+                  <span className="text-text-muted text-[10px]">▼</span>
+                </div>
+
+                {batchDropdownOpen && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-border rounded-xl shadow-lg p-2.5 space-y-2 max-h-48 overflow-y-auto">
+                    <input
+                      type="text"
+                      placeholder="Search..."
+                      value={batchSearch}
+                      onChange={(e) => setBatchSearch(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full bg-[#F7F8FC] border border-border rounded-lg px-2 py-1 text-[11px] outline-none font-semibold"
+                    />
+                    <div className="flex items-center gap-2 pb-1.5 border-b border-border/45">
+                      <input
+                        type="checkbox"
+                        id="select-all-creator-batches"
+                        checked={selectedBatches.length === 4}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedBatches(["Batch A", "Batch B", "Batch C", "Batch D"]);
+                          } else {
+                            setSelectedBatches([]);
+                          }
+                        }}
+                        className="rounded text-primary focus:ring-primary w-3 h-3 cursor-pointer"
+                      />
+                      <label htmlFor="select-all-creator-batches" className="text-[11px] font-bold text-foreground cursor-pointer select-none">
+                        Select All
+                      </label>
+                    </div>
+                    <div className="space-y-1 pt-1">
+                      {["Batch A", "Batch B", "Batch C", "Batch D"].filter(b => b.toLowerCase().includes(batchSearch.toLowerCase())).map(b => (
+                        <div key={b} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id={`creator-batch-${b}`}
+                            checked={selectedBatches.includes(b)}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedBatches([...selectedBatches, b]);
+                              } else {
+                                setSelectedBatches(selectedBatches.filter(item => item !== b));
+                              }
+                            }}
+                            className="rounded text-primary focus:ring-primary w-3 h-3 cursor-pointer"
+                          />
+                          <label htmlFor={`creator-batch-${b}`} className="text-[11px] font-semibold text-foreground cursor-pointer select-none flex-grow">
+                            {b}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Quiz Type</label>

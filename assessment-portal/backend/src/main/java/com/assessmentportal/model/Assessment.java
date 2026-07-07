@@ -47,6 +47,8 @@ public class Assessment {
 
     private AssessmentFile file;
 
+    private List<String> batches = new ArrayList<>();
+
     @JsonManagedReference
     private List<Question> questions = new ArrayList<>();
 
@@ -56,5 +58,16 @@ public class Assessment {
                 q.setAssessment(this);
             }
         }
+    }
+
+    public List<String> getBatches() {
+        if (batches == null || batches.isEmpty()) {
+            List<String> list = new ArrayList<>();
+            if (batch != null && !batch.trim().isEmpty()) {
+                list.add(batch);
+            }
+            return list;
+        }
+        return batches;
     }
 }
