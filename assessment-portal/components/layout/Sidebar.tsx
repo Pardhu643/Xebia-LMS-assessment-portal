@@ -16,7 +16,8 @@ import {
   User,
   LogOut,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Award
 } from "lucide-react";
 
 interface SidebarProps {
@@ -49,6 +50,7 @@ export default function Sidebar({ isOpen, onClose, collapsed, onCollapseToggle }
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "My Classes", href: "/classes", icon: BookOpen },
     { name: "My Assessments", href: "/assessments", icon: FileSpreadsheet },
+    { name: "My Certificates", href: "/certificates", icon: Award },
     { name: "Marks", href: "/marks", icon: FileCheck },
     { name: "Materials", href: "/materials", icon: Upload },
     { name: "Deadlines", href: "/deadlines", icon: Calendar },

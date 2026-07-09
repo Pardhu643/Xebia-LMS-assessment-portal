@@ -13,6 +13,7 @@ interface AppContextType {
   login: (email: string, password: string, role: "teacher" | "learner") => Promise<boolean>;
   logout: () => void;
   saveAssessment: (assessment: Assessment) => Promise<void>;
+  publishAssessment: (id: string) => Promise<void>;
   deleteAssessment: (id: string) => Promise<void>;
   submitAssessment: (submission: Submission) => Promise<void>;
   gradeSubmission: (submissionId: string, marks: number, feedback?: string) => Promise<void>;
@@ -44,7 +45,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const [loadedClasses, loadedAssessments, loadedSubmissions, loadedMaterials] =
           await Promise.all([
             apiService.getClasses(),
-            apiService.getAssessments(),
+            apiService.getAssessments(undefined, undefined, undefined, user?.role || "learner"),
             apiService.getSubmissions(),
             apiService.getMaterials(),
           ]);
@@ -67,6 +68,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const user = await apiService.login(email, password, role);
       apiService.setCurrentUser(user);
       setCurrentUser(user);
+      const loaded = await apiService.getAssessments(undefined, undefined, undefined, user.role);
+      setAssessments(loaded);
       return true;
     } catch (error) {
       console.error("Login failed:", error);
@@ -80,14 +83,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleSaveAssessment = async (assessment: Assessment) => {
-    await apiService.saveAssessment(assessment);
-    const updated = await apiService.getAssessments();
+    if (assessment.status === "draft") {
+      await apiService.saveDraftAssessment(assessment);
+    } else {
+      await apiService.savePublishAssessment(assessment);
+    }
+    const updated = await apiService.getAssessments(undefined, undefined, undefined, currentUser?.role || "learner");
+    setAssessments(updated);
+  };
+
+  const handlePublishAssessment = async (id: string) => {
+    await apiService.publishAssessmentById(id);
+    const updated = await apiService.getAssessments(undefined, undefined, undefined, currentUser?.role || "learner");
     setAssessments(updated);
   };
 
   const handleDeleteAssessment = async (id: string) => {
     await apiService.deleteAssessment(id);
-    const updated = await apiService.getAssessments();
+    const updated = await apiService.getAssessments(undefined, undefined, undefined, currentUser?.role || "learner");
     setAssessments(updated);
   };
 
@@ -143,6 +156,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         saveAssessment: handleSaveAssessment,
+        publishAssessment: handlePublishAssessment,
         deleteAssessment: handleDeleteAssessment,
         submitAssessment: handleSubmitAssessment,
         gradeSubmission: handleGradeSubmission,

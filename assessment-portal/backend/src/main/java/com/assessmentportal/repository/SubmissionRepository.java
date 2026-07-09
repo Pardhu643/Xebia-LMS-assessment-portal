@@ -10,4 +10,5 @@ import java.util.List;
 public interface SubmissionRepository extends MongoRepository<Submission, String> {
     List<Submission> findByAssessmentId(String assessmentId);
     List<Submission> findByLearnerId(String learnerId);
+    java.util.Optional<Submission> findByAssessmentIdAndLearnerId(String assessmentId, String learnerId);
 }

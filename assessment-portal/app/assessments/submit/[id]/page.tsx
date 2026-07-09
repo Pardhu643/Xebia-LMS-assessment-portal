@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../../../../lib/context";
 import { useParams, useRouter } from "next/navigation";
-import { Assessment, Submission } from "../../../../types";
-import { ArrowLeft, Clock, FileText, CheckCircle, Download, UploadCloud, X, Send, Eye } from "lucide-react";
+import { Assessment, Submission, Certificate } from "../../../../types";
+import { ArrowLeft, Clock, FileText, CheckCircle, Download, UploadCloud, X, Send, Eye, Award } from "lucide-react";
 import FilePreviewModal from "../../../../components/files/FilePreviewModal";
+import CertificatePreviewModal from "../../../../components/certificates/CertificatePreviewModal";
 import { apiService } from "../../../../lib/apiService";
 
 const formatSize = (bytes?: number) => {
@@ -54,6 +55,9 @@ export default function SubmitAssessmentPage() {
   const [subFile, setSubFile] = useState<File | null>(null);
   
   const [submitted, setSubmitted] = useState(false);
+  const [certificate, setCertificate] = useState<Certificate | null>(null);
+  const [showCertModal, setShowCertModal] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(true);
 
   const userId = currentUser?.id || "";
   const userName = currentUser?.name || "Student";
@@ -68,8 +72,18 @@ export default function SubmitAssessmentPage() {
     }
   }, [assessmentId, assessments]);
 
-  // If already submitted, redirect or show feedback
   const existingSub = submissions.find((s) => s.assessmentId === assessmentId && s.learnerId === userId);
+
+  useEffect(() => {
+    if (existingSub && assessment && (existingSub.status === "marked" || existingSub.status === "Auto Graded")) {
+      const pct = existingSub.percentage !== undefined ? existingSub.percentage : ((existingSub.marksObtained || 0) / existingSub.totalMarks) * 100;
+      if (pct >= 90) {
+        apiService.generateCertificate(userId, assessment.id)
+          .then(cert => setCertificate(cert))
+          .catch(err => console.error("Error generating/fetching certificate:", err));
+      }
+    }
+  }, [existingSub, userId, assessment]);
 
   if (userRole !== "learner") {
     return (
@@ -161,7 +175,7 @@ export default function SubmitAssessmentPage() {
           </p>
         </div>
         
-        {existingSub?.status === "marked" && (
+        {(existingSub?.status === "marked" || existingSub?.status === "Auto Graded") && (
           <div className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-xl text-center space-y-1.5">
             <span className="text-[10px] font-black text-text-muted uppercase tracking-widest block">Evaluated Score</span>
             <span className="text-2xl font-black text-emerald-700">{existingSub.marksObtained} / {existingSub.totalMarks}</span>
@@ -170,6 +184,24 @@ export default function SubmitAssessmentPage() {
                 Feedback: {existingSub.feedback}
               </p>
             )}
+          </div>
+        )}
+
+        {certificate && (
+          <div className="bg-purple-50/50 border border-[#84117C]/15 p-5 rounded-xl text-center space-y-3">
+            <div className="flex items-center justify-center gap-1.5 text-[#84117C]">
+              <Award size={18} className="animate-pulse" />
+              <span className="text-xs font-black uppercase tracking-widest">Certificate Unlocked!</span>
+            </div>
+            <p className="text-[11px] text-text-muted font-semibold leading-relaxed">
+              Congratulations! You scored 90% or above and earned an official Xebia certificate.
+            </p>
+            <button
+              onClick={() => router.push(`/certificates/${certificate.id}`)}
+              className="w-full bg-[#84117C] hover:bg-[#6c0e66] text-white font-bold py-2.5 rounded-lg text-xs uppercase cursor-pointer flex items-center justify-center gap-1.5 transition-all shadow-xs"
+            >
+              <Award size={14} /> View Certificate
+            </button>
           </div>
         )}
 

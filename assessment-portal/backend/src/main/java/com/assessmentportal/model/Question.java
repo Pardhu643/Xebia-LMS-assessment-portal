@@ -27,6 +27,10 @@ public class Question {
 
     private int marks;
 
+    private String difficulty;
+
+    private String explanation;
+
     @JsonBackReference
     @org.springframework.data.annotation.Transient
     private Assessment assessment;

@@ -63,7 +63,9 @@ Traditional LMS platforms often treat assessment uploads as raw binary download 
 
 ### 👨‍🏫 Teacher Features
 *   **Assessment Creator**: Choose between Manual Question Entry or Excel template file importing.
-*   **Multiple Batch Selection**: Target single assessments to multiple student groups (Batch A, B, C, D) simultaneously.
+*   **Save as Draft / Publish Assessment**: Save assessments as draft (visible only to instructors for later editing) or publish them when ready (visible to assigned students).
+*   **Create New Batch**: Register new candidate groups dynamically on-the-fly directly from the assessment builder batch selector.
+*   **Multiple Batch Selection**: Target single assessments to multiple student groups (Batch A, B, C, D, etc.) simultaneously.
 *   **Submissions Review Desk**: Monitor student status (Pending, Submitted, Graded, Late, Missing) dynamically.
 *   **Bulk Actions**: Select multiple candidate rows to bulk-grade, bulk-mark reviewed, or bulk-download files.
 *   **Grading & Comments**: Score written tests and leave constructive feedback.
@@ -75,6 +77,8 @@ Traditional LMS platforms often treat assessment uploads as raw binary download 
 *   **File Previewer**: View attachments inline (PDF, DOCX, XLSX, CSV, images, text) directly in the browser.
 *   **Solution Upload**: Multipart file uploader for solved response files (max 5MB).
 *   **Marks Panel**: Monitor test grades and read instructor remarks.
+*   **My Certificates Workspace**: Review unlocked enterprise-grade Xebia Academy credentials with a dedicated menu layout.
+*   **Certificate Preview & PDF Exporter**: Preview certificates pixel-for-pixel using a styled SVG canvas wrapper or generate high-quality PDF downloads.
 
 ### 🛠️ Feature Modules Summary
 *   **Assessment Module**: Manual creation, Excel sheet parsing, multi-batch assignment, draft/publishing, student player attempts.
@@ -186,6 +190,25 @@ npm run dev
 ```
 Open **`http://localhost:3000`** in your browser.
 
+### 5. Deployment Instructions
+
+#### Backend Deployment (Railway)
+1. Log in to [Railway](https://railway.com/).
+2. Create a new project linking your repository, specifying the root directory as `assessment-portal/backend`.
+3. Configure settings:
+   *   **Build Command**: `./mvnw clean package -DskipTests`
+   *   **Start Command**: `java -jar target/assessment-portal-backend-0.0.1-SNAPSHOT.jar`
+4. Set the environment variables:
+   *   `MONGODB_URI`: `<your MongoDB Atlas connection URI>`
+   *   `ALLOWED_ORIGINS`: `<Vercel frontend deployment URL>,http://localhost:3000`
+
+#### Frontend Deployment (Vercel)
+1. Log in to [Vercel](https://vercel.com/).
+2. Import your GitHub repository, setting the root directory as `assessment-portal`.
+3. Choose the **Next.js** framework preset.
+4. Configure the environment variables:
+   *   `NEXT_PUBLIC_API_URL`: `<your Railway backend deployed URL>`
+
 ---
 
 ## 🔑 Environment Variables
@@ -262,9 +285,17 @@ Calls `GET /api/files/download/{file}`. Streams resource bytes with `Content-Dis
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `POST` | `/api/auth/login` | Authenticates user; checks plain-text credentials and role |
-| `GET` | `/api/assessments` | Fetches assessments list, supports `batch` and `timeFilter` |
+| `GET` | `/api/assessments` | Fetches assessments list, supports `batch`, `timeFilter`, `status`, and `role` parameters |
 | `POST` | `/api/assessments` | Saves new assessment (Teacher) |
+| `POST` | `/api/assessments/draft` | Saves assessment as draft with DRAFT status |
+| `POST` | `/api/assessments/publish` | Saves assessment as published with PUBLISHED status |
+| `PATCH` | `/api/assessments/{id}/publish` | Publishes a draft assessment |
 | `DELETE` | `/api/assessments/{id}` | Deletes assessment record (Teacher) |
+| `GET` | `/api/batches` | Retrieves list of all training batches |
+| `POST` | `/api/batches` | Registers a new batch (prevents name duplicates) |
+| `GET` | `/api/batches/{id}` | Retrieves batch details by ID |
+| `PATCH` | `/api/batches/{id}` | Updates batch configuration fields |
+| `DELETE` | `/api/batches/{id}` | Deletes batch record |
 | `GET` | `/api/submissions` | Fetches submissions, including dynamic virtual pending/missing records |
 | `POST` | `/api/submissions` | Saves student attempt response |
 | `PATCH` | `/api/submissions/{id}/grade` | Enters subjective marks score and feedback comments |
@@ -273,6 +304,9 @@ Calls `GET /api/files/download/{file}`. Streams resource bytes with `Content-Dis
 | `POST` | `/api/uploads` | Uploads binary files to backend storage directory |
 | `GET` | `/api/files/preview/{file}` | Streams file inline |
 | `GET` | `/api/files/download/{file}` | Streams file as attachment download |
+| `POST` | `/api/certificates/generate` | Evaluates rules and generates digital certificate metadata |
+| `GET` | `/api/certificates/student/{id}`| Retrieves list of certificates unlocked by learner ID |
+| `GET` | `/api/certificates/{id}` | Retrieves specific certificate verification details |
 
 ---
 

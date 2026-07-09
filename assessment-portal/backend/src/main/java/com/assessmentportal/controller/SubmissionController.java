@@ -14,6 +14,9 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
+import com.assessmentportal.model.Question;
+import com.assessmentportal.service.CertificateService;
+
 @RestController
 @RequestMapping("/api/submissions")
 public class SubmissionController {
@@ -21,14 +24,17 @@ public class SubmissionController {
     private final SubmissionRepository submissionRepository;
     private final UserRepository userRepository;
     private final AssessmentRepository assessmentRepository;
+    private final CertificateService certificateService;
 
     public SubmissionController(
             SubmissionRepository submissionRepository,
             UserRepository userRepository,
-            AssessmentRepository assessmentRepository) {
+            AssessmentRepository assessmentRepository,
+            CertificateService certificateService) {
         this.submissionRepository = submissionRepository;
         this.userRepository = userRepository;
         this.assessmentRepository = assessmentRepository;
+        this.certificateService = certificateService;
     }
 
     @GetMapping
@@ -235,7 +241,55 @@ public class SubmissionController {
 
     @PostMapping
     public Submission submit(@RequestBody Submission submission) {
-        return submissionRepository.save(submission);
+        Optional<Assessment> optAssessment = assessmentRepository.findById(submission.getAssessmentId());
+        if (optAssessment.isPresent()) {
+            Assessment assessment = optAssessment.get();
+            List<Question> questions = assessment.getQuestions();
+            
+            if (questions != null && !questions.isEmpty()) {
+                boolean hasWritten = false;
+                int mcqMarksObtained = 0;
+                int totalMcqQuestions = 0;
+                
+                for (Question q : questions) {
+                    if ("written".equalsIgnoreCase(q.getType())) {
+                        hasWritten = true;
+                    } else if ("mcq".equalsIgnoreCase(q.getType())) {
+                        totalMcqQuestions++;
+                        String studentAns = submission.getAnswers() != null ? submission.getAnswers().get(q.getId()) : null;
+                        if (studentAns != null && q.getCorrectAnswer() != null) {
+                            if (studentAns.trim().equalsIgnoreCase(q.getCorrectAnswer().trim())) {
+                                mcqMarksObtained += q.getMarks();
+                            }
+                        }
+                    }
+                }
+                
+                if (totalMcqQuestions > 0 && !hasWritten) {
+                    submission.setMarksObtained(mcqMarksObtained);
+                    double pct = ((double) mcqMarksObtained / assessment.getTotalMarks()) * 100.0;
+                    submission.setPercentage(pct);
+                    submission.setStatus("Auto Graded");
+                } else if (totalMcqQuestions > 0 && hasWritten) {
+                    submission.setMarksObtained(mcqMarksObtained);
+                    double pct = ((double) mcqMarksObtained / assessment.getTotalMarks()) * 100.0;
+                    submission.setPercentage(pct);
+                    submission.setStatus("submitted");
+                } else {
+                    submission.setPercentage(0.0);
+                }
+            } else {
+                submission.setPercentage(0.0);
+            }
+        }
+
+        Submission saved = submissionRepository.save(submission);
+        
+        if ("Auto Graded".equals(saved.getStatus())) {
+            certificateService.checkAndGenerate(saved.getLearnerId(), saved.getAssessmentId());
+        }
+        
+        return saved;
     }
 
     @PatchMapping("/{id}/grade")
@@ -250,9 +304,15 @@ public class SubmissionController {
         submission.setMarksObtained(request.getMarks());
         submission.setFeedback(request.getFeedback());
         submission.setStatus("marked");
+        
+        double pct = ((double) request.getMarks() / submission.getTotalMarks()) * 100.0;
+        submission.setPercentage(pct);
 
-        submissionRepository.save(submission);
-        return ResponseEntity.ok(submission);
+        Submission saved = submissionRepository.save(submission);
+        
+        certificateService.checkAndGenerate(saved.getLearnerId(), saved.getAssessmentId());
+        
+        return ResponseEntity.ok(saved);
     }
 
     @PostMapping("/bulk-grade")
@@ -265,7 +325,13 @@ public class SubmissionController {
                 s.setMarksObtained(item.getMarks());
                 s.setFeedback(item.getFeedback());
                 s.setStatus("marked");
-                updated.add(submissionRepository.save(s));
+                
+                double pct = ((double) item.getMarks() / s.getTotalMarks()) * 100.0;
+                s.setPercentage(pct);
+                
+                Submission saved = submissionRepository.save(s);
+                certificateService.checkAndGenerate(saved.getLearnerId(), saved.getAssessmentId());
+                updated.add(saved);
             }
         }
         return ResponseEntity.ok(updated);
@@ -282,7 +348,13 @@ public class SubmissionController {
                 if (s.getMarksObtained() == null) {
                     s.setMarksObtained(s.getTotalMarks());
                 }
-                updated.add(submissionRepository.save(s));
+                
+                double pct = ((double) s.getMarksObtained() / s.getTotalMarks()) * 100.0;
+                s.setPercentage(pct);
+                
+                Submission saved = submissionRepository.save(s);
+                certificateService.checkAndGenerate(saved.getLearnerId(), saved.getAssessmentId());
+                updated.add(saved);
             }
         }
         return ResponseEntity.ok(updated);

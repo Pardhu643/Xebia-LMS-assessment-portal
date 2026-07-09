@@ -19,6 +19,8 @@ export interface Question {
   options?: string[]; // Used for MCQ
   correctAnswer?: string;
   marks: number;
+  difficulty?: string;
+  explanation?: string;
 }
 
 export interface Assessment {
@@ -58,13 +60,30 @@ export interface Submission {
   rollNumber?: string;
   deadline?: string;
   answers: { [questionId: string]: string }; // Map of questionId to answer text/option
-  status: "submitted" | "marked" | "pending" | "missing" | "late";
+  status: "submitted" | "marked" | "pending" | "missing" | "late" | "Auto Graded";
   marksObtained?: number;
+  percentage?: number;
   totalMarks: number;
   feedback?: string;
   submittedAt: string;
   submittedFileUrl?: string; // If student submitted a file instead
   submittedFileName?: string;
+}
+
+export interface Certificate {
+  id: string;
+  studentId: string;
+  studentName: string;
+  assessmentId: string;
+  assessmentTitle: string;
+  subject: string;
+  percentage: number;
+  marksObtained: number;
+  totalMarks: number;
+  issueDate: string;
+  downloadCount: number;
+  certificateUrl?: string;
+  status: string;
 }
 
 export interface Material {
@@ -87,4 +106,17 @@ export interface ClassInfo {
   time: string;
   teacherName: string;
   room?: string;
+}
+
+export interface Batch {
+  id?: string;
+  batchName: string;
+  course: string;
+  subject: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

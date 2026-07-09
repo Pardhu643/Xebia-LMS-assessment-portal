@@ -2,14 +2,16 @@
 
 import React, { useState } from "react";
 import { useApp } from "../../lib/context";
-import { Assessment, Submission } from "../../types";
+import { Assessment, Submission, Certificate } from "../../types";
 import Filters from "../../components/filters/Filters";
 import { useRouter } from "next/navigation";
 import { apiService } from "../../lib/apiService";
+import CertificatePreviewModal from "../../components/certificates/CertificatePreviewModal";
 import {
   FileText,
   FilePlus,
   Upload,
+  Download,
   Calendar,
   Layers,
   Trash2,
@@ -18,15 +20,18 @@ import {
   Clock,
   Eye,
   X,
-  Sparkles
+  Sparkles,
+  Award
 } from "lucide-react";
 
 export default function AssessmentsPage() {
   const router = useRouter();
-  const { currentUser, assessments, submissions, deleteAssessment, saveAssessment } = useApp();
+  const { currentUser, assessments, submissions, deleteAssessment, saveAssessment, publishAssessment } = useApp();
   const [timeFilter, setTimeFilter] = useState("All");
   const [batchFilter, setBatchFilter] = useState("All Batches");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">("all");
+  const [previewAssessment, setPreviewAssessment] = useState<Assessment | null>(null);
   
   // File upload state
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -42,12 +47,26 @@ export default function AssessmentsPage() {
   const [showScoreModal, setShowScoreModal] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
 
+  const handleViewCertificate = async (studentId: string, assessmentId: string) => {
+    try {
+      const cert = await apiService.generateCertificate(studentId, assessmentId);
+      router.push(`/certificates/${cert.id}`);
+    } catch (err) {
+      console.error("Error loading certificate:", err);
+      alert("Failed to load certificate. Please try again.");
+    }
+  };
+
   const userRole = currentUser?.role || "learner";
   const userId = currentUser?.id || "";
 
   const handlePublish = async (assessment: Assessment) => {
-    const updated: Assessment = { ...assessment, status: "published" };
-    await saveAssessment(updated);
+    try {
+      await publishAssessment(assessment.id);
+    } catch (err: any) {
+      console.error("Failed to publish assessment:", err);
+      alert(err.message || "Failed to publish assessment.");
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -110,8 +129,15 @@ export default function AssessmentsPage() {
   const filteredAssessments = assessments.filter((a) => {
     if (search && !a.title.toLowerCase().includes(search.toLowerCase()) && !a.subject.toLowerCase().includes(search.toLowerCase())) return false;
     
-    if (userRole === "learner") {
+    if (userRole === "teacher") {
+      if (statusFilter === "draft" && a.status !== "draft") return false;
+      if (statusFilter === "published" && a.status !== "published") return false;
+    } else {
+      // Learners should NOT see draft assessments
       if (a.status !== "published") return false;
+    }
+
+    if (userRole === "learner") {
       const studentBatch = currentUser?.batch || "Batch A";
       const hasBatch = a.batches?.includes(studentBatch) || a.batch === studentBatch;
       if (!hasBatch) return false;
@@ -128,6 +154,7 @@ export default function AssessmentsPage() {
     const sub = submissions.find((s) => s.assessmentId === assessmentId && s.learnerId === userId);
     if (!sub) return { label: "Not Started", color: "bg-zinc-50 text-zinc-500 border-zinc-200", code: "pending", data: null };
     if (sub.status === "marked") return { label: "Marked", color: "bg-emerald-50 text-emerald-700 border-emerald-100", code: "marked", data: sub };
+    if (sub.status === "Auto Graded") return { label: "Auto Graded", color: "bg-purple-50 text-[#84117C] border-[#84117C]/20", code: "marked", data: sub };
     return { label: "Submitted", color: "bg-primary/5 text-primary border-primary/10", code: "submitted", data: sub };
   };
 
@@ -155,6 +182,24 @@ export default function AssessmentsPage() {
           hideBatch={userRole === "learner"}
         />
       </div>
+
+      {userRole === "teacher" && (
+        <div className="flex gap-2 border-b border-border/50 pb-2">
+          {(["all", "draft", "published"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setStatusFilter(tab)}
+              className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-all cursor-pointer capitalize ${
+                statusFilter === tab
+                  ? "bg-[#84117C]/10 text-[#84117C] border border-[#84117C]/20"
+                  : "text-text-muted hover:text-foreground hover:bg-zinc-100"
+              }`}
+            >
+              {tab === "all" ? "All Assessments" : tab === "draft" ? "Drafts Only" : "Published Only"}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Action panel & search */}
       <div className="flex flex-col md:flex-row gap-4 items-center">
@@ -249,20 +294,43 @@ export default function AssessmentsPage() {
                     }`}>
                       {item.status}
                     </span>
-                    <div className="flex gap-2">
-                      {item.status === "draft" && (
-                        <button
-                          onClick={() => handlePublish(item)}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl cursor-pointer"
-                        >
-                          Publish
-                        </button>
+                    <div className="flex gap-2 items-center">
+                      {item.status === "draft" ? (
+                        <>
+                          <button
+                            onClick={() => router.push(`/assessments/edit/${item.id}`)}
+                            className="bg-zinc-800 hover:bg-zinc-950 text-white font-bold text-[10px] px-3 py-2 rounded-xl cursor-pointer transition-all uppercase"
+                          >
+                            Edit Draft
+                          </button>
+                          <button
+                            onClick={() => handlePublish(item)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3 py-2 rounded-xl cursor-pointer transition-all uppercase"
+                          >
+                            Publish
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => setPreviewAssessment(item)}
+                            className="bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-bold text-[10px] px-3 py-2 rounded-xl cursor-pointer transition-all uppercase"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => router.push(`/submissions?assessmentId=${item.id}`)}
+                            className="bg-[#84117C] hover:bg-[#6c0e66] text-white font-bold text-[10px] px-3 py-2 rounded-xl cursor-pointer transition-all uppercase"
+                          >
+                            Submissions
+                          </button>
+                        </>
                       )}
                       <button
                         onClick={() => handleDelete(item.id)}
-                        className="p-2 border border-border rounded-xl text-rose-600 hover:bg-rose-50 hover:border-rose-100 cursor-pointer"
+                        className="p-2 border border-border rounded-xl text-rose-600 hover:bg-rose-50 hover:border-rose-100 cursor-pointer transition-all"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </>
@@ -280,15 +348,33 @@ export default function AssessmentsPage() {
                         <Play size={12} /> Start Solve
                       </button>
                     ) : statusDetails.code === "marked" ? (
-                      <button
-                        onClick={() => {
-                          setSelectedSubmission(statusDetails.data);
-                          setShowScoreModal(true);
-                        }}
-                        className="bg-accent hover:bg-accent-dark text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs"
-                      >
-                        <Eye size={12} /> View Scorecard
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedSubmission(statusDetails.data);
+                            setShowScoreModal(true);
+                          }}
+                          className="bg-accent hover:bg-accent-dark text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          <Eye size={12} /> View Scorecard
+                        </button>
+                        {(() => {
+                          const sub = statusDetails.data;
+                          if (!sub) return null;
+                          const pct = sub.percentage !== undefined ? sub.percentage : ((sub.marksObtained || 0) / sub.totalMarks) * 100;
+                          if (pct >= 90) {
+                            return (
+                              <button
+                                onClick={() => handleViewCertificate(userId, item.id)}
+                                className="bg-[#84117C] hover:bg-[#6c0e66] text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs animate-fadeIn"
+                              >
+                                <Award size={12} /> View Certificate
+                              </button>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                     ) : (
                       <button
                         disabled
@@ -498,6 +584,94 @@ export default function AssessmentsPage() {
                 className="w-full bg-zinc-800 hover:bg-zinc-900 text-white font-bold py-3 rounded-xl text-xs uppercase cursor-pointer"
               >
                 Close Scorecard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Assessment Preview Modal */}
+      {previewAssessment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white border border-border rounded-2xl w-full max-w-2xl overflow-hidden shadow-lg animate-fadeIn flex flex-col h-[80vh]">
+            <div className="bg-[#84117C] p-6 text-white flex justify-between items-center flex-shrink-0">
+              <div className="space-y-1">
+                <h3 className="font-black text-sm uppercase tracking-wider">Assessment Preview</h3>
+                <span className="text-xs text-white/70 block">{previewAssessment.title}</span>
+              </div>
+              <button onClick={() => setPreviewAssessment(null)} className="text-white/80 hover:text-white cursor-pointer">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 flex-1 overflow-y-auto custom-scrollbar space-y-6 bg-[#F7F8FC]">
+              <div className="bg-white border border-border p-6 rounded-2xl">
+                <h2 className="text-lg font-black text-foreground">{previewAssessment.title}</h2>
+                <span className="text-xs text-text-muted block mt-1">
+                  Subject: {previewAssessment.subject} | Status: {previewAssessment.status} | Total Marks: {previewAssessment.totalMarks}
+                </span>
+                {previewAssessment.instructions && (
+                  <p className="text-xs text-foreground bg-[#F7F8FC] p-3 rounded-xl border mt-3 italic">
+                    Instructions: {previewAssessment.instructions}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {previewAssessment.questions && previewAssessment.questions.length > 0 ? (
+                  previewAssessment.questions.map((q, index) => (
+                    <div key={q.id} className="bg-white border border-border p-6 rounded-2xl space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-black text-primary uppercase">Question {index + 1}</span>
+                        <span className="text-xs font-bold text-text-muted">{q.marks} Marks</span>
+                      </div>
+                      <p className="font-bold text-sm text-foreground">{q.text}</p>
+
+                      {q.options && q.options.length > 0 && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                          {q.options.map((opt, i) => (
+                            <div
+                              key={i}
+                              className={`p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
+                                q.correctAnswer === opt
+                                  ? "border-emerald-500 bg-emerald-50/50 text-emerald-700 font-bold"
+                                  : "border-border hover:border-primary"
+                              }`}
+                            >
+                              {opt}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : previewAssessment.fileName ? (
+                  <div className="bg-white border border-border p-6 rounded-2xl text-center space-y-3">
+                    <span className="text-xs font-bold text-text-muted uppercase block">Attached File</span>
+                    <a
+                      href={previewAssessment.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-xs font-black text-primary bg-primary/5 border border-primary/20 px-4 py-2.5 rounded-xl hover:bg-primary/10 transition-all"
+                    >
+                      <Download size={14} /> Download {previewAssessment.fileName} ({previewAssessment.fileSize})
+                    </a>
+                  </div>
+                ) : (
+                  <div className="bg-white border border-border p-6 rounded-2xl text-center text-xs text-text-muted font-semibold">
+                    No questions or file attachments found in this assessment.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-border bg-white flex justify-end flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setPreviewAssessment(null)}
+                className="bg-zinc-800 hover:bg-zinc-900 text-white font-bold py-3 px-6 rounded-xl text-xs uppercase cursor-pointer"
+              >
+                Close Preview
               </button>
             </div>
           </div>

@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useApp } from "../../../lib/context";
-import { Assessment, Question, QuestionType, Batch } from "../../../types";
-import { apiService } from "../../../lib/apiService";
-import { useRouter } from "next/navigation";
+import { useApp } from "../../../../lib/context";
+import { Assessment, Question, QuestionType, Batch, ClassInfo } from "../../../../types";
+import { apiService } from "../../../../lib/apiService";
+import { useRouter, useParams } from "next/navigation";
 import * as XLSX from "xlsx";
 import {
   ArrowLeft,
@@ -21,8 +21,9 @@ import {
   AlertCircle
 } from "lucide-react";
 
-export default function CreateAssessmentPage() {
+export default function EditAssessmentPage() {
   const router = useRouter();
+  const { id } = useParams();
   const { currentUser, classes, saveAssessment } = useApp();
 
   const [title, setTitle] = useState("");
@@ -53,8 +54,8 @@ export default function CreateAssessmentPage() {
   }, []);
 
   const allBatches = React.useMemo(() => {
-    const classBatches = classes.map(c => c.batch);
-    const customBatchesList = customBatches.map(b => b.batchName);
+    const classBatches = classes.map((c: ClassInfo) => c.batch);
+    const customBatchesList = customBatches.map((b: Batch) => b.batchName);
     return Array.from(new Set([...classBatches, ...customBatchesList])).filter(Boolean);
   }, [classes, customBatches]);
 
@@ -78,6 +79,25 @@ export default function CreateAssessmentPage() {
 
   // Preview modal state
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      apiService.getAssessments(undefined, undefined, undefined, "teacher")
+        .then((list: Assessment[]) => {
+          const found = list.find((a: Assessment) => a.id === id);
+          if (found) {
+            setTitle(found.title);
+            setSubject(found.subject);
+            setSelectedBatches(found.batches && found.batches.length > 0 ? found.batches : [found.batch]);
+            setInstructions(found.instructions || "");
+            setQuestionType(found.questionType);
+            setDeadline(found.deadline ? found.deadline.slice(0, 16) : "");
+            setQuestions(found.questions || []);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [id]);
 
   const userRole = currentUser?.role || "learner";
 
@@ -381,7 +401,7 @@ export default function CreateAssessmentPage() {
     }
 
     const newAssessment: Assessment = {
-      id: "a-" + Date.now(),
+      id: id as string,
       title,
       subject,
       batch: selectedBatches[0] || "",
@@ -851,7 +871,7 @@ export default function CreateAssessmentPage() {
                       
                       {q.options && (
                         <div className="grid grid-cols-2 gap-2 mt-2">
-                          {q.options.map((opt, i) => (
+                          {q.options.map((opt: string, i: number) => (
                             <span
                               key={i}
                               className={`text-xs px-2.5 py-1.5 rounded-lg border text-left flex items-center gap-1.5 ${
@@ -931,7 +951,7 @@ export default function CreateAssessmentPage() {
 
                     {q.options && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                        {q.options.map((opt, i) => (
+                        {q.options.map((opt: string, i: number) => (
                           <div
                             key={i}
                             className={`p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${

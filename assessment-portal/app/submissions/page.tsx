@@ -1,5 +1,7 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+
 import React, { useState, useEffect } from "react";
 import { useApp } from "../../lib/context";
 import { Submission } from "../../types";
@@ -30,11 +32,14 @@ export default function SubmissionsPage() {
   const userRole = currentUser?.role || "learner";
 
   // Filter States
+  const searchParams = useSearchParams();
+  const queryAssessmentId = searchParams ? searchParams.get("assessmentId") || "" : "";
+
   const [selectedBatches, setSelectedBatches] = useState<string[]>(["Batch A", "Batch B", "Batch C", "Batch D"]);
   const [batchDropdownOpen, setBatchDropdownOpen] = useState(false);
   const [batchSearch, setBatchSearch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
-  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>("");
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>(queryAssessmentId);
   const [selectedTimeFilter, setSelectedTimeFilter] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<string>("Newest First");
@@ -531,17 +536,18 @@ export default function SubmissionsPage() {
                       <div>
                         <span className="font-bold block truncate max-w-[200px]">{sub.assessmentTitle}</span>
                         <span className="text-[10px] text-text-muted block mt-0.5">{sub.subject}</span>
-                      </div>
-                    </td>
+                      </div>                     </td>
                     <td className="p-4 sm:p-5">
                       <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
                         sub.status === "marked" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                        sub.status === "Auto Graded" ? "bg-purple-50 text-[#84117C] border-[#84117C]/20" :
                         sub.status === "submitted" ? "bg-primary/5 text-primary border-primary/10" :
                         sub.status === "late" ? "bg-amber-50 text-amber-700 border-amber-100" :
                         sub.status === "missing" ? "bg-rose-50 text-rose-700 border-rose-100" :
                         "bg-zinc-50 text-zinc-500 border-zinc-200"
                       }`}>
                         {sub.status === "marked" ? "Graded" : 
+                         sub.status === "Auto Graded" ? "Auto Graded" :
                          sub.status === "submitted" ? "Submitted" : 
                          sub.status === "late" ? "Late Submission" : 
                          sub.status === "missing" ? "Missing" : 
@@ -555,13 +561,25 @@ export default function SubmissionsPage() {
                       {sub.deadline ? new Date(sub.deadline).toLocaleString() : "--"}
                     </td>
                     <td className="p-4 sm:p-5">
-                      {sub.status === "marked" ? (
-                        <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-100 rounded-lg">
-                          {sub.marksObtained} / {sub.totalMarks}
-                        </span>
-                      ) : (
-                        <span className="text-text-muted font-bold">-- / {sub.totalMarks}</span>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {sub.status === "marked" || sub.status === "Auto Graded" ? (
+                          <>
+                            <span className="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-100 rounded-lg">
+                              {sub.marksObtained} / {sub.totalMarks}
+                            </span>
+                            {((sub.percentage !== undefined ? sub.percentage : ((sub.marksObtained || 0) / sub.totalMarks) * 100) >= 90) && (
+                              <span 
+                                title="Certificate Earned" 
+                                className="w-5 h-5 rounded-full bg-purple-50 border border-[#84117C]/20 text-[#84117C] flex items-center justify-center cursor-help"
+                              >
+                                <Award size={11} />
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-text-muted font-bold">-- / {sub.totalMarks}</span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-4 sm:p-5 text-right">
                       {sub.status !== "pending" && sub.status !== "missing" ? (

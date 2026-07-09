@@ -1,4 +1,4 @@
-import { Assessment, Submission, Material, ClassInfo, User } from "../types";
+import { Assessment, Submission, Material, ClassInfo, User, Certificate, Batch } from "../types";
 
 const API_BASE = "/api";
 
@@ -45,13 +45,19 @@ export const apiService = {
   },
 
   // --- ASSESSMENTS ---
-  getAssessments: async (batch?: string, timeFilter?: string): Promise<Assessment[]> => {
+  getAssessments: async (batch?: string, timeFilter?: string, status?: string, role?: string): Promise<Assessment[]> => {
     const params = new URLSearchParams();
     if (batch && batch !== "All Batches" && batch !== "") {
       params.set("batch", batch);
     }
     if (timeFilter && timeFilter !== "All") {
       params.set("timeFilter", timeFilter);
+    }
+    if (status) {
+      params.set("status", status);
+    }
+    if (role) {
+      params.set("role", role);
     }
     const query = params.toString();
     const res = await fetch(`${API_BASE}/assessments${query ? `?${query}` : ""}`);
@@ -66,6 +72,34 @@ export const apiService = {
       body: JSON.stringify(assessment),
     });
     if (!res.ok) throw new Error("Failed to save assessment");
+    return res.json();
+  },
+
+  saveDraftAssessment: async (assessment: Assessment): Promise<Assessment> => {
+    const res = await fetch(`${API_BASE}/assessments/draft`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(assessment),
+    });
+    if (!res.ok) throw new Error("Failed to save draft assessment");
+    return res.json();
+  },
+
+  savePublishAssessment: async (assessment: Assessment): Promise<Assessment> => {
+    const res = await fetch(`${API_BASE}/assessments/publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(assessment),
+    });
+    if (!res.ok) throw new Error("Failed to save and publish assessment");
+    return res.json();
+  },
+
+  publishAssessmentById: async (id: string): Promise<Assessment> => {
+    const res = await fetch(`${API_BASE}/assessments/${id}/publish`, {
+      method: "PATCH",
+    });
+    if (!res.ok) throw new Error("Failed to publish assessment");
     return res.json();
   },
 
@@ -207,5 +241,87 @@ export const apiService = {
     });
     if (!res.ok) throw new Error("Failed to upload file");
     return res.json();
+  },
+
+  // --- CERTIFICATES ---
+  generateCertificate: async (studentId: string, assessmentId: string): Promise<Certificate> => {
+    const res = await fetch(`${API_BASE}/certificates/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId, assessmentId }),
+    });
+    if (!res.ok) throw new Error("Certificate cannot be generated. Check rules.");
+    return res.json();
+  },
+
+  getStudentCertificates: async (studentId: string): Promise<Certificate[]> => {
+    const res = await fetch(`${API_BASE}/certificates/student/${studentId}`);
+    if (!res.ok) throw new Error("Failed to fetch certificates");
+    return res.json();
+  },
+
+  getCertificateById: async (certificateId: string): Promise<Certificate> => {
+    const res = await fetch(`${API_BASE}/certificates/${certificateId}`);
+    if (!res.ok) throw new Error("Failed to fetch certificate");
+    return res.json();
+  },
+
+  getCertificatePreviewUrl: (certificateId: string): string => {
+    return `${API_BASE}/certificates/preview/${certificateId}`;
+  },
+
+  getCertificateDownloadUrl: (certificateId: string): string => {
+    return `${API_BASE}/certificates/download/${certificateId}`;
+  },
+
+  // --- BATCHES ---
+  getBatches: async (): Promise<Batch[]> => {
+    const res = await fetch(`${API_BASE}/batches`);
+    if (!res.ok) throw new Error("Failed to fetch batches");
+    return res.json();
+  },
+
+  createBatch: async (batch: Batch): Promise<Batch> => {
+    const res = await fetch(`${API_BASE}/batches`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(batch),
+    });
+    if (!res.ok) {
+      if (res.status === 409) {
+        throw new Error(`A batch with name '${batch.batchName}' already exists.`);
+      }
+      throw new Error("Failed to create batch");
+    }
+    return res.json();
+  },
+
+  getBatchById: async (id: string): Promise<Batch> => {
+    const res = await fetch(`${API_BASE}/batches/${id}`);
+    if (!res.ok) throw new Error("Failed to fetch batch");
+    return res.json();
+  },
+
+  updateBatch: async (id: string, updates: Partial<Batch>): Promise<Batch> => {
+    const res = await fetch(`${API_BASE}/batches/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      if (res.status === 409) {
+        throw new Error(`A batch with name '${updates.batchName}' already exists.`);
+      }
+      throw new Error("Failed to update batch");
+    }
+    return res.json();
+  },
+
+  deleteBatch: async (id: string): Promise<boolean> => {
+    const res = await fetch(`${API_BASE}/batches/${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete batch");
+    return true;
   },
 };

@@ -44,6 +44,8 @@ public class Submission {
 
     private String submittedAt;
 
+    private Double percentage;
+
     private String submittedFileUrl;
 
     private String submittedFileName;
