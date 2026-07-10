@@ -48,3 +48,6 @@ backend/.mvn/wrapper/maven-wrapper.jar
 *.class
 *.jar
 *.log
+
+.vercel
+.env*
