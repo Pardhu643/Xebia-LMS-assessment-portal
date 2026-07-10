@@ -9,8 +9,6 @@ export default function CertificateTemplate({ certificate }: CertificateTemplate
   const {
     studentName,
     subject,
-    marksObtained,
-    totalMarks,
     percentage,
     issueDate,
     id
@@ -36,105 +34,335 @@ export default function CertificateTemplate({ certificate }: CertificateTemplate
   return (
     <div 
       id="certificate-container"
-      className="relative bg-white border-[16px] border-[#84117C] p-12 flex flex-col justify-between select-none shadow-2xl mx-auto overflow-hidden text-zinc-800"
       style={{
+        position: "relative",
+        backgroundColor: "#ffffff",
+        border: "16px solid #84117C",
+        padding: "48px",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        boxSizing: "border-box",
         width: "1123px",
         height: "794px",
-        fontFamily: "'Times New Roman', Times, serif"
+        fontFamily: "'Times New Roman', Times, serif",
+        color: "#27272a",
+        overflow: "hidden",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
       }}
     >
       {/* Decorative Gold Radial Background */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(132,17,124,0.03),transparent_40%)] pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(132,17,124,0.03),transparent_40%)] pointer-events-none" />
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        backgroundImage: "radial-gradient(circle at bottom left, rgba(132, 17, 124, 0.03), transparent 40%)",
+        pointerEvents: "none"
+      }} />
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        backgroundImage: "radial-gradient(circle at top right, rgba(132, 17, 124, 0.03), transparent 40%)",
+        pointerEvents: "none"
+      }} />
 
       {/* Outer elegant double border */}
-      <div className="absolute inset-4 border-2 border-double border-[#84117C]/40 pointer-events-none rounded-sm" />
+      <div style={{
+        position: "absolute",
+        top: "16px",
+        left: "16px",
+        right: "16px",
+        bottom: "16px",
+        border: "2px double rgba(132, 17, 124, 0.4)",
+        pointerEvents: "none",
+        borderRadius: "4px"
+      }} />
 
       {/* Main Content Area */}
-      <div className="relative flex-1 flex flex-col justify-between border border-[#84117C]/15 p-8 rounded-lg">
+      <div style={{
+        position: "relative",
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        border: "1px solid rgba(132, 17, 124, 0.15)",
+        padding: "32px",
+        borderRadius: "8px",
+        boxSizing: "border-box",
+        height: "100%"
+      }}>
         {/* Top Header Row with Logo */}
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-3">
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          width: "100%"
+        }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px"
+          }}>
             <img
               src="/images/xebia-logo.png"
               alt="Xebia Logo"
-              className="w-14 h-14 object-contain"
+              style={{
+                width: "56px",
+                height: "56px",
+                objectFit: "contain"
+              }}
             />
-            <div className="flex flex-col text-left font-sans">
-              <span className="text-[#84117C] font-extrabold text-lg tracking-wider leading-none">Xebia</span>
-              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5">Academy</span>
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              textAlign: "left",
+              fontFamily: "sans-serif"
+            }}>
+              <span style={{
+                color: "#84117C",
+                fontWeight: "800",
+                fontSize: "18px",
+                letterSpacing: "0.05em",
+                lineHeight: 1
+              }}>Xebia</span>
+              <span style={{
+                fontSize: "10px",
+                color: "#71717a",
+                fontWeight: "bold",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                marginTop: "2px"
+              }}>Academy</span>
             </div>
           </div>
-          <div className="text-right text-[#84117C]/30 font-serif italic text-xs">
+          <div style={{
+            textAlign: "right",
+            color: "rgba(132, 17, 124, 0.3)",
+            fontFamily: "serif",
+            fontStyle: "italic",
+            fontSize: "12px"
+          }}>
             Official Certification
           </div>
         </div>
 
         {/* Certificate Title */}
-        <div className="text-center my-1">
-          <h1 className="text-5xl font-extrabold tracking-wide text-[#84117C] font-serif uppercase">
+        <div style={{
+          textAlign: "center",
+          margin: "4px 0"
+        }}>
+          <h1 style={{
+            fontSize: "48px",
+            fontWeight: "800",
+            letterSpacing: "0.05em",
+            color: "#84117C",
+            fontFamily: "serif",
+            textTransform: "uppercase",
+            margin: 0
+          }}>
             Certificate of Completion
           </h1>
-          <div className="w-48 h-[2px] bg-gradient-to-r from-transparent via-[#84117C]/40 to-transparent mx-auto mt-2" />
+          <div style={{
+            width: "192px",
+            height: "2px",
+            background: "linear-gradient(to right, transparent, rgba(132, 17, 124, 0.4), transparent)",
+            margin: "8px auto 0 auto"
+          }} />
         </div>
 
         {/* Recipient Text */}
-        <div className="text-center space-y-4">
-          <p className="text-lg text-zinc-500 font-sans italic">
+        <div style={{
+          textAlign: "center"
+        }}>
+          <p style={{
+            fontSize: "18px",
+            color: "#71717a",
+            fontFamily: "sans-serif",
+            fontStyle: "italic",
+            margin: "0 0 8px 0"
+          }}>
             This is to certify that
           </p>
-          <h2 className="text-5xl font-bold text-[#84117C] tracking-wide my-3 py-1 italic font-serif">
+          <h2 style={{
+            fontSize: "48px",
+            fontWeight: "bold",
+            color: "#84117C",
+            letterSpacing: "0.05em",
+            margin: "12px 0",
+            padding: "4px 0",
+            fontStyle: "italic",
+            fontFamily: "serif"
+          }}>
             {studentName}
           </h2>
-          <p className="text-lg text-zinc-500 font-sans italic">
+          <p style={{
+            fontSize: "18px",
+            color: "#71717a",
+            fontFamily: "sans-serif",
+            fontStyle: "italic",
+            margin: "8px 0"
+          }}>
             has successfully completed the subject
           </p>
-          <h3 className="text-3xl font-extrabold text-[#6C1D5F] font-serif tracking-wide">
+          <h3 style={{
+            fontSize: "30px",
+            fontWeight: "800",
+            color: "#6C1D5F",
+            fontFamily: "serif",
+            letterSpacing: "0.05em",
+            margin: "12px 0"
+          }}>
             {displaySubject}
           </h3>
-          <p className="text-base text-zinc-600 font-sans mt-3">
-            with an overall score of <strong className="text-[#84117C] font-black">{percentage.toFixed(2)}%</strong>
+          <p style={{
+            fontSize: "16px",
+            color: "#52525b",
+            fontFamily: "sans-serif",
+            marginTop: "12px"
+          }}>
+            with an overall score of <strong style={{ color: "#84117C", fontWeight: "900" }}>{percentage.toFixed(2)}%</strong>
           </p>
         </div>
 
         {/* Footer Details Grid */}
-        <div className="grid grid-cols-3 items-end text-center mt-6 pt-4 border-t border-zinc-100 font-sans">
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr 1fr",
+          alignItems: "flex-end",
+          textAlign: "center",
+          marginTop: "24px",
+          paddingTop: "16px",
+          borderTop: "1px solid #f4f4f5",
+          fontFamily: "sans-serif"
+        }}>
           {/* Issue Date */}
-          <div className="flex flex-col items-center">
-            <span className="text-xs font-bold text-[#6C1D5F] uppercase tracking-wider">Issue Date</span>
-            <span className="text-sm font-semibold text-zinc-800 mt-1">{formattedDate}</span>
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center"
+          }}>
+            <span style={{
+              fontSize: "12px",
+              fontWeight: "bold",
+              color: "#6C1D5F",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em"
+            }}>Issue Date</span>
+            <span style={{
+              fontSize: "14px",
+              fontWeight: "600",
+              color: "#27272a",
+              marginTop: "4px"
+            }}>{formattedDate}</span>
           </div>
 
           {/* Issued by Xebia Academy & Gold Stamp */}
-          <div className="flex flex-col items-center justify-center -mb-8">
-            <span className="text-xs font-bold text-[#6C1D5F] uppercase tracking-wider mb-2">Issued by</span>
-            <span className="text-sm font-semibold text-zinc-800">Xebia Academy</span>
-            <div className="w-20 h-20 my-2 relative flex items-center justify-center">
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: "-32px"
+          }}>
+            <span style={{
+              fontSize: "12px",
+              fontWeight: "bold",
+              color: "#6C1D5F",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              marginBottom: "8px"
+            }}>Issued by</span>
+            <span style={{
+              fontSize: "14px",
+              fontWeight: "600",
+              color: "#27272a"
+            }}>Xebia Academy</span>
+            <div style={{
+              width: "80px",
+              height: "80px",
+              margin: "8px 0",
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
               <img
                 src="/images/gold-stamp.png"
                 alt="Gold Stamp Badge"
-                className="w-full h-full object-contain"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain"
+                }}
               />
             </div>
             
             {/* CEO Signature Block underneath */}
-            <div className="flex flex-col items-center mt-1">
-              <div className="h-10 relative w-36 flex items-center justify-center">
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              marginTop: "4px"
+            }}>
+              <div style={{
+                height: "40px",
+                position: "relative",
+                width: "144px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}>
                 <img
                   src="/images/ceo-signature.png"
                   alt="Anand Sahay Signature"
-                  className="max-h-full object-contain"
+                  style={{
+                    maxHeight: "100%",
+                    objectFit: "contain"
+                  }}
                 />
               </div>
-              <span className="text-xs font-extrabold text-zinc-800 mt-1 border-t border-zinc-200 pt-1 w-32">Anand Sahay</span>
-              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">CEO, Xebia</span>
+              <span style={{
+                fontSize: "12px",
+                fontWeight: "800",
+                color: "#27272a",
+                marginTop: "4px",
+                borderTop: "1px solid #e4e4e7",
+                paddingTop: "4px",
+                width: "128px"
+              }}>Anand Sahay</span>
+              <span style={{
+                fontSize: "10px",
+                color: "#71717a",
+                fontWeight: "bold",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em"
+              }}>CEO, Xebia</span>
             </div>
           </div>
 
           {/* Certificate ID */}
-          <div className="flex flex-col items-center">
-            <span className="text-xs font-bold text-[#6C1D5F] uppercase tracking-wider">Certificate ID</span>
-            <span className="text-[9px] text-zinc-400 font-mono mt-1 w-48 break-all select-all font-semibold uppercase">{id}</span>
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center"
+          }}>
+            <span style={{
+              fontSize: "12px",
+              fontWeight: "bold",
+              color: "#6C1D5F",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em"
+            }}>Certificate ID</span>
+            <span style={{
+              fontSize: "9px",
+              color: "#a1a1aa",
+              fontFamily: "monospace",
+              marginTop: "4px",
+              width: "192px",
+              wordBreak: "break-all",
+              userSelect: "all",
+              fontWeight: "600",
+              textTransform: "uppercase"
+            }}>{id}</span>
           </div>
         </div>
       </div>

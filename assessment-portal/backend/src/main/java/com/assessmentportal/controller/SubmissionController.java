@@ -360,6 +360,89 @@ public class SubmissionController {
         return ResponseEntity.ok(updated);
     }
 
+    @GetMapping("/{id}/scorecard")
+    public ResponseEntity<?> getScorecard(@PathVariable String id) {
+        Optional<Submission> optSubmission = submissionRepository.findById(id);
+        if (!optSubmission.isPresent()) {
+            return ResponseEntity.status(404).body("Submission not found");
+        }
+        Submission submission = optSubmission.get();
+        Optional<Assessment> optAssessment = assessmentRepository.findById(submission.getAssessmentId());
+        if (!optAssessment.isPresent()) {
+            return ResponseEntity.status(404).body("Assessment not found");
+        }
+        Assessment assessment = optAssessment.get();
+        
+        // If assessment has MCQ/structured questions but submission answers map is empty, return 400
+        List<Question> questions = assessment.getQuestions();
+        boolean hasQuestions = questions != null && !questions.isEmpty();
+        boolean hasAnswers = submission.getAnswers() != null && !submission.getAnswers().isEmpty();
+        if (hasQuestions && !hasAnswers) {
+            return ResponseEntity.status(400).body("Submission has no answer data");
+        }
+        
+        ScorecardResponse response = new ScorecardResponse();
+        response.setSubmissionId(submission.getId());
+        response.setAssessmentId(submission.getAssessmentId());
+        response.setAssessmentTitle(submission.getAssessmentTitle());
+        response.setSubject(submission.getSubject());
+        response.setMarksObtained(submission.getMarksObtained());
+        response.setTotalMarks(submission.getTotalMarks());
+        response.setPercentage(submission.getPercentage() != null ? submission.getPercentage() : 0.0);
+        response.setFeedback(submission.getFeedback());
+        response.setSubmittedAt(submission.getSubmittedAt());
+        response.setSubmittedFileName(submission.getSubmittedFileName());
+        response.setSubmittedFileUrl(submission.getSubmittedFileUrl());
+        response.setDetailedReviewAvailable(true);
+        
+        // Calculate status
+        double pct = submission.getPercentage() != null ? submission.getPercentage() : 0.0;
+        response.setStatus(pct >= 90.0 ? "PASSED" : "FAILED");
+        
+        if (hasQuestions) {
+            int totalQuestions = 0;
+            int correctCount = 0;
+            int wrongCount = 0;
+            int unansweredCount = 0;
+            
+            for (Question q : questions) {
+                totalQuestions++;
+                ScorecardAnswer ans = new ScorecardAnswer();
+                ans.setQuestionId(q.getId());
+                ans.setQuestionText(q.getText());
+                ans.setOptions(q.getOptions());
+                ans.setCorrectAnswer(q.getCorrectAnswer());
+                ans.setQuestionMarks(q.getMarks());
+                ans.setExplanation(q.getExplanation());
+                
+                String studentAns = submission.getAnswers().get(q.getId());
+                ans.setStudentAnswer(studentAns);
+                
+                if (studentAns == null || studentAns.trim().isEmpty()) {
+                    unansweredCount++;
+                    ans.setCorrect(false);
+                    ans.setMarksAwarded(0);
+                } else if (q.getCorrectAnswer() != null && studentAns.trim().equalsIgnoreCase(q.getCorrectAnswer().trim())) {
+                    correctCount++;
+                    ans.setCorrect(true);
+                    ans.setMarksAwarded(q.getMarks());
+                } else {
+                    wrongCount++;
+                    ans.setCorrect(false);
+                    ans.setMarksAwarded(0);
+                }
+                response.getAnswers().add(ans);
+            }
+            
+            response.setTotalQuestions(totalQuestions);
+            response.setCorrectCount(correctCount);
+            response.setWrongCount(wrongCount);
+            response.setUnansweredCount(unansweredCount);
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+
     public static class BulkGradeItem {
         private String id;
         private int marks;
@@ -371,5 +454,94 @@ public class SubmissionController {
         public void setMarks(int marks) { this.marks = marks; }
         public String getFeedback() { return feedback; }
         public void setFeedback(String feedback) { this.feedback = feedback; }
+    }
+
+    public static class ScorecardResponse {
+        private String submissionId;
+        private String assessmentId;
+        private String assessmentTitle;
+        private String subject;
+        private int totalQuestions;
+        private int correctCount;
+        private int wrongCount;
+        private int unansweredCount;
+        private Integer marksObtained;
+        private int totalMarks;
+        private double percentage;
+        private String status;
+        private String feedback;
+        private String submittedAt;
+        private String submittedFileName;
+        private String submittedFileUrl;
+        private boolean detailedReviewAvailable;
+        private List<ScorecardAnswer> answers = new ArrayList<>();
+
+        public String getSubmissionId() { return submissionId; }
+        public void setSubmissionId(String submissionId) { this.submissionId = submissionId; }
+        public String getAssessmentId() { return assessmentId; }
+        public void setAssessmentId(String assessmentId) { this.assessmentId = assessmentId; }
+        public String getAssessmentTitle() { return assessmentTitle; }
+        public void setAssessmentTitle(String assessmentTitle) { this.assessmentTitle = assessmentTitle; }
+        public String getSubject() { return subject; }
+        public void setSubject(String subject) { this.subject = subject; }
+        public int getTotalQuestions() { return totalQuestions; }
+        public void setTotalQuestions(int totalQuestions) { this.totalQuestions = totalQuestions; }
+        public int getCorrectCount() { return correctCount; }
+        public void setCorrectCount(int correctCount) { this.correctCount = correctCount; }
+        public int getWrongCount() { return wrongCount; }
+        public void setWrongCount(int wrongCount) { this.wrongCount = wrongCount; }
+        public int getUnansweredCount() { return unansweredCount; }
+        public void setUnansweredCount(int unansweredCount) { this.unansweredCount = unansweredCount; }
+        public Integer getMarksObtained() { return marksObtained; }
+        public void setMarksObtained(Integer marksObtained) { this.marksObtained = marksObtained; }
+        public int getTotalMarks() { return totalMarks; }
+        public void setTotalMarks(int totalMarks) { this.totalMarks = totalMarks; }
+        public double getPercentage() { return percentage; }
+        public void setPercentage(double percentage) { this.percentage = percentage; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public String getFeedback() { return feedback; }
+        public void setFeedback(String feedback) { this.feedback = feedback; }
+        public String getSubmittedAt() { return submittedAt; }
+        public void setSubmittedAt(String submittedAt) { this.submittedAt = submittedAt; }
+        public String getSubmittedFileName() { return submittedFileName; }
+        public void setSubmittedFileName(String submittedFileName) { this.submittedFileName = submittedFileName; }
+        public String getSubmittedFileUrl() { return submittedFileUrl; }
+        public void setSubmittedFileUrl(String submittedFileUrl) { this.submittedFileUrl = submittedFileUrl; }
+        public boolean isDetailedReviewAvailable() { return detailedReviewAvailable; }
+        public void setDetailedReviewAvailable(boolean detailedReviewAvailable) { this.detailedReviewAvailable = detailedReviewAvailable; }
+        public List<ScorecardAnswer> getAnswers() { return answers; }
+        public void setAnswers(List<ScorecardAnswer> answers) { this.answers = answers; }
+    }
+
+    public static class ScorecardAnswer {
+        private String questionId;
+        private String questionText;
+        private List<String> options;
+        private String studentAnswer;
+        private String correctAnswer;
+        private boolean isCorrect;
+        private int marksAwarded;
+        private int questionMarks;
+        private String explanation;
+
+        public String getQuestionId() { return questionId; }
+        public void setQuestionId(String questionId) { this.questionId = questionId; }
+        public String getQuestionText() { return questionText; }
+        public void setQuestionText(String questionText) { this.questionText = questionText; }
+        public List<String> getOptions() { return options; }
+        public void setOptions(List<String> options) { this.options = options; }
+        public String getStudentAnswer() { return studentAnswer; }
+        public void setStudentAnswer(String studentAnswer) { this.studentAnswer = studentAnswer; }
+        public String getCorrectAnswer() { return correctAnswer; }
+        public void setCorrectAnswer(String correctAnswer) { this.correctAnswer = correctAnswer; }
+        public boolean isCorrect() { return isCorrect; }
+        public void setCorrect(boolean correct) { isCorrect = correct; }
+        public int getMarksAwarded() { return marksAwarded; }
+        public void setMarksAwarded(int marksAwarded) { this.marksAwarded = marksAwarded; }
+        public int getQuestionMarks() { return questionMarks; }
+        public void setQuestionMarks(int questionMarks) { this.questionMarks = questionMarks; }
+        public String getExplanation() { return explanation; }
+        public void setExplanation(String explanation) { this.explanation = explanation; }
     }
 }

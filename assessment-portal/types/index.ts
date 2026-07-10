@@ -120,3 +120,35 @@ export interface Batch {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface ScorecardAnswer {
+  questionId: string;
+  questionText: string;
+  options: string[];
+  studentAnswer?: string;
+  correctAnswer?: string;
+  isCorrect: boolean;
+  marksAwarded: number;
+  questionMarks: number;
+  explanation?: string;
+}
+
+export interface ScorecardResponse {
+  submissionId: string;
+  assessmentId: string;
+  assessmentTitle: string;
+  subject: string;
+  totalQuestions: number;
+  correctCount: number;
+  wrongCount: number;
+  unansweredCount: number;
+  marksObtained?: number;
+  totalMarks: number;
+  percentage: number;
+  status: "PASSED" | "FAILED";
+  feedback?: string;
+  submittedAt?: string;
+  submittedFileName?: string;
+  submittedFileUrl?: string;
+  answers: ScorecardAnswer[];
+}

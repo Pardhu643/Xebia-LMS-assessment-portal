@@ -1,4 +1,4 @@
-import { Assessment, Submission, Material, ClassInfo, User, Certificate, Batch } from "../types";
+import { Assessment, Submission, Material, ClassInfo, User, Certificate, Batch, ScorecardResponse } from "../types";
 
 const API_BASE = "/api";
 
@@ -178,6 +178,15 @@ export const apiService = {
       body: JSON.stringify(ids),
     });
     if (!res.ok) throw new Error("Failed bulk reviewed");
+    return res.json();
+  },
+
+  getScorecard: async (submissionId: string): Promise<ScorecardResponse> => {
+    const res = await fetch(`${API_BASE}/submissions/${submissionId}/scorecard`);
+    if (!res.ok) {
+      const errorMsg = await res.text().catch(() => "");
+      throw new Error(`Failed to fetch scorecard details (Status: ${res.status}). ${errorMsg}`);
+    }
     return res.json();
   },
 

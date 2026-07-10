@@ -64,19 +64,56 @@ export default function CertificatePreviewPage({ params }: CertificatePreviewPag
     if (!certificate || downloading) return;
     setDownloading(true);
 
+    // Temporarily mock document.styleSheets to be empty so html2canvas only uses inline styles and ignores tailwind v4 stylesheets with oklch/oklab
+    const originalStyleSheets = document.styleSheets;
+    Object.defineProperty(document, "styleSheets", {
+      get: () => [],
+      configurable: true
+    });
+
+    let printContainer: HTMLDivElement | null = null;
     try {
       const element = document.getElementById("certificate-container");
       if (!element) throw new Error("Certificate element not found");
 
+      // Clone the certificate element to avoid any page scale transforms interfering
+      const clonedElement = element.cloneNode(true) as HTMLElement;
+      
+      // Create a hidden print container offscreen
+      printContainer = document.createElement("div");
+      printContainer.style.position = "fixed";
+      printContainer.style.left = "-9999px";
+      printContainer.style.top = "-9999px";
+      printContainer.style.width = "1123px";
+      printContainer.style.height = "794px";
+      printContainer.appendChild(clonedElement);
+      document.body.appendChild(printContainer);
+
+      // Wait for all images inside the cloned element to load
+      const images = Array.from(clonedElement.getElementsByTagName("img"));
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise<void>((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          });
+        })
+      );
+
       const html2canvas = (await import("html2canvas")).default;
       const jsPDF = (await import("jspdf")).default;
 
-      // Use a canvas resolution scale of 2.2 for print-quality high resolution
-      const canvas = await html2canvas(element, {
-        scale: 2.2,
+      // Capture the certificate cloned element with print settings
+      const canvas = await html2canvas(clonedElement, {
+        scale: 2,
         useCORS: true,
+        backgroundColor: "#FFFFFF",
         logging: false,
-        backgroundColor: "#ffffff"
+        width: 1123,
+        height: 794,
+        windowWidth: 1123,
+        windowHeight: 794
       });
 
       const imgData = canvas.toDataURL("image/png");
@@ -99,6 +136,15 @@ export default function CertificatePreviewPage({ params }: CertificatePreviewPag
       console.error("PDF download failure:", err);
       alert("Failed to render PDF. Please try again.");
     } finally {
+      // Clean up print container
+      if (printContainer && printContainer.parentNode) {
+        printContainer.parentNode.removeChild(printContainer);
+      }
+      // Restore document.styleSheets immediately
+      Object.defineProperty(document, "styleSheets", {
+        get: () => originalStyleSheets,
+        configurable: true
+      });
       setDownloading(false);
     }
   };

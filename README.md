@@ -298,6 +298,7 @@ Calls `GET /api/files/download/{file}`. Streams resource bytes with `Content-Dis
 | `DELETE` | `/api/batches/{id}` | Deletes batch record |
 | `GET` | `/api/submissions` | Fetches submissions, including dynamic virtual pending/missing records |
 | `POST` | `/api/submissions` | Saves student attempt response |
+| `GET` | `/api/submissions/{id}/scorecard` | Fetches detailed scorecard with statistics, correct/wrong counts, and question-by-question review |
 | `PATCH` | `/api/submissions/{id}/grade` | Enters subjective marks score and feedback comments |
 | `POST` | `/api/submissions/bulk-grade` | Bulk grades multiple submissions |
 | `POST` | `/api/submissions/bulk-reviewed` | Bulk marks submissions as reviewed |

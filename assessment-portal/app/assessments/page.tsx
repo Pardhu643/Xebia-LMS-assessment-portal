@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useApp } from "../../lib/context";
-import { Assessment, Submission, Certificate } from "../../types";
+import { Assessment, Submission, Certificate, ScorecardResponse } from "../../types";
 import Filters from "../../components/filters/Filters";
 import { useRouter } from "next/navigation";
 import { apiService } from "../../lib/apiService";
@@ -43,9 +43,11 @@ export default function AssessmentsPage() {
   const [uploadDeadline, setUploadDeadline] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
 
-  // Scorecard modal state
   const [showScoreModal, setShowScoreModal] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [scorecardData, setScorecardData] = useState<ScorecardResponse | null>(null);
+  const [scorecardLoading, setScorecardLoading] = useState(false);
+  const [scorecardError, setScorecardError] = useState<string | null>(null);
 
   const handleViewCertificate = async (studentId: string, assessmentId: string) => {
     try {
@@ -350,9 +352,23 @@ export default function AssessmentsPage() {
                     ) : statusDetails.code === "marked" ? (
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => {
-                            setSelectedSubmission(statusDetails.data);
-                            setShowScoreModal(true);
+                          onClick={async () => {
+                            const sub = statusDetails.data;
+                            if (sub) {
+                              setSelectedSubmission(sub);
+                              setShowScoreModal(true);
+                              setScorecardLoading(true);
+                              setScorecardError(null);
+                              try {
+                                const sc = await apiService.getScorecard(sub.id);
+                                setScorecardData(sc);
+                              } catch (err: any) {
+                                console.error("Error loading scorecard:", err);
+                                setScorecardError(err.message || "Failed to load detailed scorecard.");
+                              } finally {
+                                setScorecardLoading(false);
+                              }
+                            }
                           }}
                           className="bg-accent hover:bg-accent-dark text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs"
                         >
@@ -550,41 +566,259 @@ export default function AssessmentsPage() {
       {/* Scorecard Modal (Learner only) */}
       {showScoreModal && selectedSubmission && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="bg-white border border-border rounded-2xl w-full max-w-md overflow-hidden shadow-lg animate-fadeIn">
-            <div className="bg-accent p-6 text-white flex justify-between items-center">
+          <div className="bg-white border border-border rounded-2xl w-full max-w-2xl overflow-hidden shadow-lg animate-fadeIn flex flex-col h-[90vh]">
+            <div className="bg-[#84117C] p-6 text-white flex justify-between items-center flex-shrink-0">
               <h3 className="font-black text-sm uppercase tracking-wider">Assessment Scorecard</h3>
-              <button onClick={() => setShowScoreModal(false)} className="text-white/80 hover:text-white">
+              <button onClick={() => { setShowScoreModal(false); setScorecardData(null); }} className="text-white/80 hover:text-white cursor-pointer">
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="text-center space-y-2">
-                <span className="text-xs font-black text-text-muted uppercase tracking-widest block">Your Graded Score</span>
-                <div className="inline-flex items-baseline gap-1 bg-emerald-50 text-emerald-700 border border-emerald-100 px-6 py-3 rounded-2xl font-black">
-                  <span className="text-3xl">{selectedSubmission.marksObtained}</span>
-                  <span className="text-sm text-emerald-600">/ {selectedSubmission.totalMarks}</span>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+              {scorecardLoading ? (
+                <div className="flex flex-col items-center justify-center h-full py-12 gap-3">
+                  <div className="w-10 h-10 border-4 border-[#84117C] border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs font-bold text-text-muted uppercase tracking-widest animate-pulse">Loading detailed scorecard...</span>
                 </div>
-              </div>
+              ) : scorecardError ? (
+                <div className="flex flex-col items-center justify-center h-full py-12 text-center space-y-3">
+                  <div className="bg-rose-50 text-rose-700 border border-rose-200 rounded-2xl p-6 max-w-md mx-auto space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-wider block text-rose-800">Review Unavailable</span>
+                    <span className="text-xs font-semibold block leading-relaxed">
+                      {scorecardError.includes("400") || scorecardError.toLowerCase().includes("no answer data")
+                        ? "Detailed answer review is unavailable for this older submission."
+                        : scorecardError}
+                    </span>
+                  </div>
+                  
+                  {/* Default Scorecard Summary fallback even on error */}
+                  <div className="border border-border rounded-2xl p-5 max-w-md mx-auto w-full text-left space-y-3 font-semibold text-xs mt-4">
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">Total Score:</span>
+                      <span className="text-foreground font-black">{selectedSubmission.marksObtained} / {selectedSubmission.totalMarks}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">Percentage:</span>
+                      <span className="text-foreground font-black">
+                        {((selectedSubmission.marksObtained || 0) / selectedSubmission.totalMarks * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    {selectedSubmission.feedback && (
+                      <div className="pt-2 border-t border-border/40 mt-1">
+                        <span className="text-[10px] font-bold text-[#84117C] uppercase tracking-wider block mb-1">Feedback</span>
+                        <p className="p-2.5 bg-[#F7F8FC] rounded-xl border border-border/60 text-foreground font-medium leading-relaxed">
+                          {selectedSubmission.feedback}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : scorecardData ? (
+                <>
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="bg-[#F7F8FC] border border-border/60 p-4 rounded-2xl text-center">
+                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Score</span>
+                      <span className="text-lg font-black text-foreground mt-1 block">
+                        {scorecardData.marksObtained !== null ? scorecardData.marksObtained : 0} / {scorecardData.totalMarks}
+                      </span>
+                    </div>
+                    <div className="bg-[#F7F8FC] border border-border/60 p-4 rounded-2xl text-center">
+                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Percentage</span>
+                      <span className="text-lg font-black text-foreground mt-1 block">
+                        {scorecardData.percentage.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="bg-[#F7F8FC] border border-border/60 p-4 rounded-2xl text-center">
+                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Status</span>
+                      <span className={`text-xs font-black px-2.5 py-1 rounded-full uppercase tracking-wider inline-block mt-2 ${
+                        scorecardData.status === "PASSED" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"
+                      }`}>
+                        {scorecardData.status}
+                      </span>
+                    </div>
+                    <div className="bg-[#F7F8FC] border border-border/60 p-4 rounded-2xl text-center">
+                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Date Submitted</span>
+                      <span className="text-xs font-bold text-foreground mt-2.5 block truncate">
+                        {scorecardData.submittedAt ? scorecardData.submittedAt.split("T")[0] : "N/A"}
+                      </span>
+                    </div>
+                  </div>
 
-              <div className="border-t border-border/50 pt-4 space-y-3">
-                <div>
-                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Assessment</span>
-                  <span className="text-xs font-bold text-foreground block mt-0.5">{selectedSubmission.assessmentTitle}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Instructor Feedback</span>
-                  <p className="text-xs text-foreground bg-[#F7F8FC] p-3.5 rounded-xl border border-border/60 mt-1 font-semibold leading-relaxed">
-                    {selectedSubmission.feedback || "Good attempt. Your answers have been validated by the instructor."}
-                  </p>
-                </div>
-              </div>
+                  {scorecardData.answers && scorecardData.answers.length > 0 && (
+                    <div className="grid grid-cols-3 gap-3 bg-zinc-50 border border-border/40 p-4 rounded-2xl text-center">
+                      <div>
+                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Correct</span>
+                        <span className="text-sm font-black text-emerald-600 mt-1 block">{scorecardData.correctCount}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Wrong</span>
+                        <span className="text-sm font-black text-rose-600 mt-1 block">{scorecardData.wrongCount}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Unanswered</span>
+                        <span className="text-sm font-black text-zinc-500 mt-1 block">{scorecardData.unansweredCount}</span>
+                      </div>
+                    </div>
+                  )}
 
+                  {/* Submission General Metadata */}
+                  <div className="bg-[#F7F8FC]/50 border border-border/50 p-4 rounded-2xl space-y-2 text-xs font-semibold">
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">Assessment Title:</span>
+                      <span className="text-foreground font-bold">{scorecardData.assessmentTitle}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-muted">Subject:</span>
+                      <span className="text-foreground font-bold">{scorecardData.subject || "General Curriculum"}</span>
+                    </div>
+                    {scorecardData.submittedFileName && (
+                      <div className="flex justify-between items-center pt-1">
+                        <span className="text-text-muted">Attachment File:</span>
+                        <a
+                          href={scorecardData.submittedFileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[#84117C] hover:underline font-bold flex items-center gap-1"
+                        >
+                          {scorecardData.submittedFileName}
+                        </a>
+                      </div>
+                    )}
+                    {scorecardData.feedback && (
+                      <div className="pt-2 border-t border-border/45 mt-2">
+                        <span className="text-[10px] font-bold text-[#84117C] uppercase tracking-wider block mb-1">Teacher Feedback</span>
+                        <p className="p-3 bg-white rounded-xl border border-border/60 text-foreground text-xs leading-relaxed font-medium">
+                          {scorecardData.feedback}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Detailed Question Review Section */}
+                  {scorecardData.answers && scorecardData.answers.length > 0 ? (
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-black text-[#84117C] uppercase tracking-widest border-b border-border/40 pb-2">
+                        Detailed Answer Review
+                      </h4>
+                      <div className="space-y-4">
+                        {scorecardData.answers.map((ans, idx) => (
+                          <div
+                            key={ans.questionId}
+                            className={`border rounded-2xl p-5 space-y-3 transition-all ${
+                              ans.isCorrect
+                                ? "border-emerald-200 bg-emerald-50/10"
+                                : ans.studentAnswer === null || ans.studentAnswer === ""
+                                ? "border-zinc-200 bg-zinc-50/10"
+                                : "border-rose-200 bg-rose-50/10"
+                            }`}
+                          >
+                            {/* Question Header */}
+                            <div className="flex justify-between items-start gap-4">
+                              <span className="text-xs font-black text-foreground">
+                                Question {idx + 1}
+                              </span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                ans.isCorrect
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : ans.studentAnswer === null || ans.studentAnswer === ""
+                                  ? "bg-zinc-100 text-zinc-600"
+                                  : "bg-rose-100 text-rose-800"
+                              }`}>
+                                {ans.isCorrect
+                                  ? `Correct (+${ans.marksAwarded}/${ans.questionMarks})`
+                                  : ans.studentAnswer === null || ans.studentAnswer === ""
+                                  ? `Unanswered (${ans.marksAwarded}/${ans.questionMarks})`
+                                  : `Wrong (${ans.marksAwarded}/${ans.questionMarks})`}
+                              </span>
+                            </div>
+
+                            {/* Question Text */}
+                            <p className="text-xs font-bold text-foreground leading-relaxed">
+                              {ans.questionText}
+                            </p>
+
+                            {/* MCQ Options Display */}
+                            {ans.options && ans.options.length > 0 && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                                {ans.options.map((opt, oIdx) => {
+                                  const isSelected = ans.studentAnswer === opt;
+                                  const isCorrectOpt = ans.correctAnswer === opt;
+                                  
+                                  let optClass = "border-border text-foreground";
+                                  if (isSelected && isCorrectOpt) {
+                                    optClass = "border-emerald-500 bg-emerald-50 text-emerald-800 font-bold";
+                                  } else if (isSelected && !isCorrectOpt) {
+                                    optClass = "border-rose-500 bg-rose-50 text-rose-800 font-bold";
+                                  } else if (!isSelected && isCorrectOpt) {
+                                    optClass = "border-emerald-500 bg-emerald-50/60 text-emerald-800 font-bold";
+                                  }
+                                  
+                                  return (
+                                    <div
+                                      key={oIdx}
+                                      className={`p-2.5 rounded-xl border text-xs leading-normal transition-all ${optClass}`}
+                                    >
+                                      <span className="font-bold mr-1.5">{String.fromCharCode(65 + oIdx)}.</span>
+                                      {opt}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Explicit Answers Summary */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                              <div>
+                                <span className="text-[10px] text-text-muted font-bold block uppercase tracking-wider">Your Answer</span>
+                                <span className={`font-bold mt-0.5 block ${
+                                  ans.isCorrect ? "text-emerald-700" : "text-rose-700"
+                                }`}>
+                                  {ans.studentAnswer || "No Answer Submitted"}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-text-muted font-bold block uppercase tracking-wider">Correct Answer</span>
+                                <span className="text-emerald-700 font-bold mt-0.5 block">{ans.correctAnswer}</span>
+                              </div>
+                            </div>
+
+                            {/* Explanation */}
+                            {ans.explanation && (
+                              <div className="bg-white/80 p-3 rounded-xl border border-border/40 text-[11px] leading-relaxed text-zinc-600 mt-2 font-medium">
+                                <strong className="text-[#84117C] font-extrabold uppercase tracking-wide mr-1 text-[9px] block mb-0.5">Explanation:</strong>
+                                {ans.explanation}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-[#F7F8FC]/40 border border-border/40 p-6 rounded-2xl text-center space-y-1">
+                      <span className="text-xs font-bold text-text-muted block">No structured questions review available.</span>
+                      <span className="text-[10px] text-zinc-500 block">This assessment was completed via subjective response upload.</span>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+            
+            <div className="p-6 border-t border-border bg-[#F7F8FC] flex justify-end gap-3 flex-shrink-0">
               <button
-                onClick={() => setShowScoreModal(false)}
-                className="w-full bg-zinc-800 hover:bg-zinc-900 text-white font-bold py-3 rounded-xl text-xs uppercase cursor-pointer"
+                onClick={() => { setShowScoreModal(false); setScorecardData(null); }}
+                className="px-5 py-2.5 border border-border rounded-xl text-xs font-bold text-text-muted hover:bg-white cursor-pointer"
               >
                 Close Scorecard
               </button>
+              {scorecardData && scorecardData.percentage >= 90 && (
+                <button
+                  onClick={() => handleViewCertificate(userId, scorecardData.assessmentId)}
+                  className="px-6 py-2.5 bg-[#84117C] hover:bg-[#6c0e66] text-white font-bold rounded-xl text-xs uppercase cursor-pointer flex items-center gap-1.5 shadow-xs transition-all animate-fadeIn"
+                >
+                  <Award size={14} /> View Certificate
+                </button>
+              )}
             </div>
           </div>
         </div>
