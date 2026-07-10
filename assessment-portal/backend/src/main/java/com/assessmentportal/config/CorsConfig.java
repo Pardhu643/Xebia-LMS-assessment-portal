@@ -19,7 +19,12 @@ public class CorsConfig implements WebMvcConfigurer {
         CorsConfiguration config = new CorsConfiguration();
         String allowedOriginsEnv = System.getenv("ALLOWED_ORIGINS");
         if (allowedOriginsEnv != null && !allowedOriginsEnv.trim().isEmpty()) {
-            config.setAllowedOrigins(Arrays.asList(allowedOriginsEnv.split(",")));
+            String[] origins = allowedOriginsEnv.split("[,\\s]+");
+            for (String origin : origins) {
+                if (!origin.trim().isEmpty()) {
+                    config.addAllowedOrigin(origin.trim());
+                }
+            }
         } else {
             config.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:3001"));
         }
