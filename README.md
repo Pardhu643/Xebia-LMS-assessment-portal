@@ -8,379 +8,303 @@
   <strong>An Enterprise-Grade Learning Management System Assessment & Resource Hub</strong>
 </p>
 
-<p align="center">
-  A secure, modern, and high-performance assessment portal enabling instructors to author custom quizzes, manage batches, track submissions, and grade student submissions, while providing learners a workspace with inline binary-safe document previews, downloads, and interactive test players.
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Java-17%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java JDK 17" />
-  <img src="https://img.shields.io/badge/Spring_Boot-2.7.18-6DB33F?style=for-the-badge&logo=springboot&logoColor=white" alt="Spring Boot" />
-  <img src="https://img.shields.io/badge/MongoDB_Atlas-Cloud-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB Atlas" />
-  <img src="https://img.shields.io/badge/Next.js-16.2.10-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js" />
-  <img src="https://img.shields.io/badge/TypeScript-5.x-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-3.x-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/Maven-3.x-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white" alt="Maven" />
-</p>
-
 ---
 
 ## 📋 Table of Contents
-- [Project Overview](#-project-overview)
-- [Features](#-features)
-- [Technology Stack](#-technology-stack)
-- [System Architecture](#-system-architecture)
-- [Project Structure](#-project-structure)
-- [Installation & Setup](#-installation--setup)
-- [Environment Variables](#-environment-variables)
-- [Login Credentials](#-login-credentials)
-- [Assessment Module](#-assessment-module)
-- [File Management](#-file-management)
-- [REST API Overview](#-rest-api-overview)
-- [Database Specifications](#-database-specifications)
-- [Screenshots](#-screenshots)
-- [Future Enhancements](#-future-enhancements)
-- [Contributing](#-contributing)
-- [License](#-license)
-- [Author](#-author)
-- [Acknowledgements](#-acknowledgements)
+- [Project Overview](#project-overview)
+- [Key Features](#key-features)
+  - [Teacher Features](#teacher-features)
+  - [Learner Features](#learner-features)
+- [Auto-Grading](#auto-grading)
+- [Certificate Module](#certificate-module)
+- [Technology Stack](#technology-stack)
+- [System Architecture](#system-architecture)
+- [Folder Structure](#folder-structure)
+- [Installation and Local Setup](#installation-and-local-setup)
+- [Environment Variables](#environment-variables)
+- [Login Credentials](#login-credentials)
+- [API Overview](#api-overview)
+- [Database Collections](#database-collections)
+- [File Upload, Preview, and Download](#file-upload-preview-and-download)
+- [Assessment Lifecycle](#assessment-lifecycle)
+- [Excel Import Format](#excel-import-format)
+- [Deployment](#deployment)
+- [Screenshots](#screenshots)
+- [Future Enhancements](#future-enhancements)
+- [Author](#author)
 
 ---
 
-## 📖 Project Overview
-The **Xebia LMS Assessment Portal** is a web-based Learning Management System module designed to streamline academic testing and grading workflows. 
+## Project Overview
+The **Xebia LMS Assessment Portal** is a web-based Learning Management System module designed to streamline academic testing, resource sharing, and grading workflows. 
 
-### Purpose & Objective
-Traditional LMS platforms often treat assessment uploads as raw binary download links, forcing students to download files locally and install external software (like MS Word or Adobe PDF) to edit or view them. This project solves this friction by implementing **in-portal binary-safe rendering** for various document formats, keeping the learning and evaluation experience consolidated, secure, and fast.
-
-### Target Users
-1.  **Teacher (Instructor)**: Responsible for authoring assessments (via manual inputs or Excel imports), configuring deadline dates, targeting batches, uploading shared materials, and reviewing/grading student submissions.
-2.  **Learner (Student)**: Filters assigned assessments by batch, reviews materials inline, downloads task sheets, uploads solved response files, and tracks grades/feedback.
-3.  **Admin (Not implemented in current project)**: User management and administrative configurations are handled by default seeding.
+Traditional LMS platforms often treat assessment files as raw download links, forcing students to install external software locally to edit or view tasks. This project solves this friction by implementing **in-portal binary-safe rendering** for document formats, keeping the learning and evaluation experience consolidated, secure, and fast.
 
 ---
 
-## ✨ Features
+## Key Features
 
-### 👨‍🏫 Teacher Features
-*   **Assessment Creator**: Choose between Manual Question Entry or Excel template file importing.
-*   **Save as Draft / Publish Assessment**: Save assessments as draft (visible only to instructors for later editing) or publish them when ready (visible to assigned students).
-*   **Create New Batch**: Register new candidate groups dynamically on-the-fly directly from the assessment builder batch selector.
-*   **Multiple Batch Selection**: Target single assessments to multiple student groups (Batch A, B, C, D, etc.) simultaneously.
-*   **Submissions Review Desk**: Monitor student status (Pending, Submitted, Graded, Late, Missing) dynamically.
-*   **Bulk Actions**: Select multiple candidate rows to bulk-grade, bulk-mark reviewed, or bulk-download files.
-*   **Grading & Comments**: Score written tests and leave constructive feedback.
-*   **Materials Panel**: Upload shared class documents directly to local storage linked to MongoDB references.
+### Teacher Features
+- **Dashboard**: High-level overview of core academic stats (active assessments, total batches, and total graded submissions).
+- **Create Assessment Manually**: Author quizzes question-by-question, defining statement, marks, option choices, difficulty, and answers.
+- **Import Quiz from Excel**: Instantly import complex quizzes using spreadsheet templates.
+- **Upload File Assessment**: Create subjective/written assignments by uploading document templates.
+- **Select Multiple Batches**: Assign a single assessment to multiple training batches simultaneously using checkbox chip grids.
+- **Create New Batch**: Register new candidate groups dynamically on-the-fly directly from the assessment builder batch selector.
+- **Save Assessment as Draft**: Keep assessments in draft mode to review and edit later before making them visible to students.
+- **Publish Assessment**: Release drafted or new assessments to assigned batches instantly.
+- **View and Filter Submissions**: Monitor student statuses (Pending, Submitted, Graded, Late, Missing) with advanced filters and search queries.
+- **Grade Submissions**: Evaluate solved written sheets or subjective text answers in a slide-out grading panel.
+- **Add Feedback**: Add constructive remarks alongside scores.
 
-### 🧑‍🎓 Learner Features
-*   **Batch Locking**: System automatically retrieves user batch profile on login and locks the queries to hide selectors.
-*   **MCQ Test Player**: Responsive answer options picker with direct submission capabilities.
-*   **File Previewer**: View attachments inline (PDF, DOCX, XLSX, CSV, images, text) directly in the browser.
-*   **Solution Upload**: Multipart file uploader for solved response files (max 5MB).
-*   **Marks Panel**: Monitor test grades and read instructor remarks.
-*   **My Certificates Workspace**: Review unlocked enterprise-grade Xebia Academy credentials with a dedicated menu layout.
-*   **Certificate Preview & PDF Exporter**: Preview certificates pixel-for-pixel using a styled SVG canvas wrapper or generate high-quality PDF downloads.
-
-### 🛠️ Feature Modules Summary
-*   **Assessment Module**: Manual creation, Excel sheet parsing, multi-batch assignment, draft/publishing, student player attempts.
-*   **File Management**: Attachment uploads, inline previews, forced file downloads.
-*   **Quiz Management**: MCQ option bindings, correct answer toggle indicators, question outlines.
-*   **Excel Import**: Client-side SheetJS template validation (columns, marks, types checks).
-*   **Submission Management**: Table lists, sort options (Newest, Oldest, Marks), and candidate search filters.
-*   **Grading & Feedback**: Evaluation modal interface for marks entry and written remarks.
-*   **Authentication**: Plain-text password matching against seeded accounts. Role-based view redirections.
-*   **Dashboard**: Dynamic metrics cards panel.
-*   **Search & Filters**: Multi-batch checkboxes, search inputs, time filters, and sorting selectors.
-*   **Materials**: Course documents downloads and inline previews.
-*   **Notifications (Not implemented in current project)**: System alerts are not present.
+### Learner Features
+- **Dashboard**: View personal dashboard showing active assignments and summary cards.
+- **Assigned Assessments**: View active tests and files.
+- **Automatic Batch-Based Assessment Filtering**: The portal automatically detects the student's registered batch profile and displays only targeted assessments.
+- **Attempt Quiz**: Solve interactive MCQ tests inside a responsive player.
+- **Upload Written/File Submission**: Solved subjective assignments can be submitted by uploading response files.
+- **View Scorecard**: Open a detailed scorecard overlay detailing the completed attempt.
+- **View Correct, Wrong, and Unanswered Answers**: View question-by-question cards with highlighted option indicators (Green for correct, Red for wrong, Gray for unanswered).
+- **View Marks and Feedback**: Read instructor scores and comments.
+- **View and Download Certificates**: Unlocked certificates can be printed or exported directly.
+- **Materials and Deadlines**: Access shared materials and track assignment deadlines.
 
 ---
 
-## 🛠️ Technology Stack
-
-| Layer | Technology | Details |
-| :--- | :--- | :--- |
-| **Frontend** | React 19, Next.js (App Router), TypeScript | Client-side application optimized with Webpack |
-| **Styling** | Vanilla CSS, Tailwind CSS | Curated professional dark/light flat enterprise theme |
-| **Backend** | Java, Spring Boot 2.7.18 | REST API controllers, file streaming endpoints |
-| **Database** | MongoDB Atlas | Cloud-hosted document database for metadata persistence |
-| **Authentication** | Local Auth Context | Custom plain-text password mapping stored in `localStorage` |
-| **State Management** | React Context API | AppContext sharing profile details and apiService calls |
-| **File Storage** | Local Disk Storage | Physical directory `./uploads` on backend server |
-| **Libraries** | Mammoth.js, SheetJS (`xlsx`) | Client-side converters for docx-to-html and sheet-to-grid layouts |
-| **Development Tools** | Maven, NPM | Build automation tools and dependency managers |
+## Auto-Grading
+The portal automates evaluation for structured quizzes using a built-in auto-grading engine:
+- **Correct Answer Column in Excel**: The parser extracts option selections or string keys from the sheet.
+- **Automatic Answer Comparison**: Upon submission, the engine matches the learner's options against the assessment's answer keys.
+- **Marks Calculation**: Assigns configured question marks for exact matches and `0` for wrong or unanswered keys.
+- **Percentage Calculation**: Computes `(Marks Obtained / Total Marks) * 100` dynamically.
+- **Status Update**: Marks the submission status as `Auto Graded` or `marked`, making it immediately accessible for review.
 
 ---
 
-## 🏗️ System Architecture
-
-*   **Frontend**: Next.js App Router serves views. Communicates with backend using a clean `apiService` gateway module wrapper executing `fetch` API commands.
-*   **Backend**: Spring Boot controllers expose endpoints mapping requests, verifying parameters, and saving model data.
-*   **MongoDB**: Serves as the primary metadata store containing collections for users, assessments, submissions, and materials.
-*   **File Storage**: Raw binary files are physically written to the backend `./uploads` directory with a unique timestamp prefix.
-*   **API Communication**: Client-to-server exchanges are standard JSON format payloads, except for multipart file upload data.
+## Certificate Module
+The portal rewards academic success with an automated certification mechanism:
+- **Certificate Eligibility Threshold**: Automatically unlocked when a learner obtains a score of **90% or above** on a published assessment.
+- **Dynamic Fields**: Automatically binds data to render custom SVG certificates:
+  - Learner's Name
+  - Subject Name
+  - Percentage Score
+  - Issue Date (formatted ISO string)
+  - Unique Certificate ID (MongoDB object identifier)
+- **Certificate Preview**: Displays the certificate inline on an A4 landscape canvas.
+- **Certificate Download**: Clients can download certificates as high-resolution PDF copies.
+- **My Certificates Page**: Dedicated student sidebar workspace summarizing all earned certificates.
 
 ---
 
-## 📂 Project Structure
+## Technology Stack
+
+- **Frontend**: Next.js (App Router), React, TypeScript, Tailwind CSS
+- **Backend**: Java, Spring Boot, Maven
+- **Database**: MongoDB Atlas (Cloud Database)
+- **APIs**: Restful Web Services
+- **Libraries**: Mammoth.js (docx-to-html), SheetJS (xlsx parser), html2canvas & jsPDF (client PDF exporter), OpenPDF (backend PDF generation)
+
+---
+
+## System Architecture
+1. **Client Tier**: Next.js UI captures user interactions and handles Mammoth/SheetJS document parsing.
+2. **Gateway API Client**: Execution commands are routed through a consolidated client wrapper executing fetch actions.
+3. **Application Server**: Spring Boot controllers map endpoints, implement security validation, and orchestrate transactions.
+4. **Database Tier**: MongoDB Atlas persists collections for users, assessments, submissions, materials, and certificates.
+5. **Physical Storage**: SOLVED sheets and reference resources are stored on the server disk under `./uploads`.
+
+---
+
+## Folder Structure
 
 ```text
 assessment-portal1/
 ├── README.md
 └── assessment-portal/
-    ├── app/                     # Next.js App Router (pages & navigation)
-    │   ├── assessments/         # Solve player, creator builder, and details views
-    │   ├── dashboard/           # Core metrics dashboard
-    │   ├── materials/           # Shared student guides
-    │   ├── marks/               # Student grades tracker
-    │   └── page.tsx             # Login interface & role selector
+    ├── app/                     # Next.js Pages & Layouts
+    │   ├── assessments/         # Solve player, builder, and list views
+    │   ├── certificates/        # Verification & download viewer
+    │   ├── dashboard/           # Metrics panels
+    │   ├── materials/           # Resources downloader
+    │   └── page.tsx             # Login interface
     ├── components/
+    │   ├── certificates/
+    │   │   ├── CertificateTemplate.tsx  # SVGCanvas design
+    │   │   └── CertificatePreviewModal.tsx
     │   └── files/
-    │       └── FilePreviewModal.tsx  # Document parser (Mammoth/SheetJS/Iframe)
+    │       └── FilePreviewModal.tsx      # Mammoth/SheetJS iframe parser
     ├── lib/
-    │   ├── apiService.ts        # Axios/Fetch API client gateway
-    │   └── context.tsx          # Global context state provider
-    ├── backend/
-    │   ├── pom.xml              # Maven configuration
-    │   ├── src/main/java/com/assessmentportal/
-    │   │   ├── controller/      # API Rest Controllers (Upload, Auth, Submissions)
-    │   │   ├── model/           # MongoDB document entities
-    │   │   ├── repository/      # MongoRepository interfaces
-    │   │   └── seed/            # Seed data helper (DataSeeder.java)
-    │   └── src/main/resources/
-    │       └── application.properties  # Database connection configurations
-    ├── public/                  # Static assets & brand logos
-    └── package.json             # Frontend NPM configuration
+    │   ├── apiService.ts        # consolidated fetch gateway
+    │   └── context.tsx          # React Auth/App context provider
+    ├── types/
+    │   └── index.ts             # TypeScript definitions
+    └── backend/
+        ├── pom.xml              # Maven dependencies
+        ├── src/main/java/com/assessmentportal/
+        │   ├── controller/      # REST API Controllers
+        │   ├── model/           # Mongo Document Classes
+        │   ├── repository/      # Repository CRUD interfaces
+        │   └── service/         # Business logic & PDF generators
+        └── src/main/resources/
+            └── application.properties # MongoDB connection strings
 ```
 
 ---
 
-## ⚙️ Installation & Setup
+## Installation and Local Setup
 
 ### Prerequisites
-*   Java JDK 17+ Installed
-*   Node.js v18+ Installed
-*   MongoDB Atlas Cluster or Local MongoDB running
+* Java JDK 17+
+* Node.js v18+
+* MongoDB Atlas cluster
 
-### 1. Clone the Repository
+### 1. Clone the Project
 ```bash
 git clone https://github.com/Pardhu643/Xebia-LMS-assessment-portal.git
 cd Xebia-LMS-assessment-portal
 ```
 
-### 2. Configure Environment Variables
-Create a local configurations profile or `.env` file containing:
-```bash
-SPRING_DATA_MONGODB_URI="your_mongodb_connection_uri"
-```
+### 2. Run MongoDB Atlas
+Ensure your cluster is active and configure network access to permit connection requests.
 
-### 3. Build & Run Backend
+### 3. Run Backend Server
 ```bash
 cd assessment-portal/backend
-# On Windows PowerShell
-$env:SPRING_DATA_MONGODB_URI="your_mongodb_atlas_connection_string"
+# Set MongoDB URI variable
+# On Windows Powershell:
+$env:SPRING_DATA_MONGODB_URI="mongodb+srv://<username>:<password>@cluster.mongodb.net/lms"
 .\mvnw.cmd spring-boot:run
 ```
-The backend starts on `http://localhost:8080`.
+The server binds to `http://localhost:8080`.
 
-### 4. Build & Run Frontend
+### 4. Run Frontend Client
 ```bash
 cd ../ # Move back to assessment-portal root
 npm install
 npm run dev
 ```
-Open **`http://localhost:3000`** in your browser.
-
-### 5. Deployment Instructions
-
-#### Backend Deployment (Railway)
-1. Log in to [Railway](https://railway.com/).
-2. Create a new project linking your repository, specifying the root directory as `assessment-portal/backend`.
-3. Configure settings:
-   *   **Build Command**: `./mvnw clean package -DskipTests`
-   *   **Start Command**: `java -jar target/assessment-portal-backend-0.0.1-SNAPSHOT.jar`
-4. Set the environment variables:
-   *   `MONGODB_URI`: `<your MongoDB Atlas connection URI>`
-   *   `ALLOWED_ORIGINS`: `<Vercel frontend deployment URL>,http://localhost:3000`
-
-#### Frontend Deployment (Vercel)
-1. Log in to [Vercel](https://vercel.com/).
-2. Import your GitHub repository, setting the root directory as `assessment-portal`.
-3. Choose the **Next.js** framework preset.
-4. Configure the environment variables:
-   *   `NEXT_PUBLIC_API_URL`: `<your Railway backend deployed URL>`
+Open `http://localhost:3000` in your browser.
 
 ---
 
-## 🔑 Environment Variables
+## Environment Variables
+Configure the following variable parameters:
+- `SPRING_DATA_MONGODB_URI`: `mongodb+srv://<db_user>:<db_password>@cluster.mongodb.net/lmsDB`
+- `PORT`: `8080` (Backend Web Server Port)
 
-| Variable Name | Description | Default Fallback |
-| :--- | :--- | :--- |
-| `SPRING_DATA_MONGODB_URI` | Cloud MongoDB Connection URI string | `mongodb://localhost:27017/employeeDB` |
-| `PORT` | Spring Boot web server port | `8080` |
+Do not commit raw database password credentials.
 
 ---
 
-## 🔐 Login Credentials
+## Login Credentials
 
-The portal is seeded with the following credentials for local evaluation:
+Seeded database user profiles:
 
-| Role | Email / Username | Password | Description |
+| Role | Email | Password | Access |
 | :--- | :--- | :--- | :--- |
-| **Teacher** | `teacher@lms.com` | `teacher123` | Can create assessments, upload resources, configure deadlines, review submissions, and enter grades. |
-| **Learner** | `learner@lms.com` | `learner123` | Can view active assessments, preview and download reference files inline, submit assignments, and track marks. |
+| **Teacher** | `teacher@lms.com` | `teacher123` | Assessment building, batch management, submission reviews, grading |
+| **Learner** | `learner@lms.com` | `learner123` | Solves tests, uploads subjective answers, reviews scorecards, views certificates |
 
 ---
 
-## 📝 Assessment Module Flow
-
-### 1. Manual Assessment
-Teachers author tests question-by-question, defining statements, marks, options, and answers using manual form inputs.
-
-### 2. Custom Quiz
-Supports interactive MCQ authoring with options checks and incorrect toggle warnings.
-
-### 3. Excel Import
-Teachers import questions from spreadsheet templates. The client-side parser validates columns, data types, and values, flagging errors dynamically.
-
-### 4. File Upload
-Instructors create written assignments by uploading task documents (e.g. PDF/DOCX) which are saved to server storage.
-
-### 5. Multiple Batch Selection
-Teachers assign assessments to one or multiple student batches (Batch A, B, C, D) using checkboxes chip grids.
-
-### 6. Assessment Publishing
-Assessments saved as "published" become instantly queryable by learners. Draft assessments are hidden.
-
-### 7. Student Submission
-Learners solve tests using MCQ options selectors or written textareas, or by attaching response sheets. MCQ tests are submitted with `"submitted"` status and graded by instructors.
-
-### 8. Grading Workflow
-Teachers evaluate subjective or MCQ answers in the Review Modal. They save scored marks and feedback comments, transitioning the status to `"marked"`.
-
----
-
-## 📂 File Management Flow
-
-### 1. Upload Flow
-Files are uploaded via `POST /api/uploads` multipart requests. The backend renames files with timestamp prefixes and writes them to `./uploads`.
-
-### 2. Preview Flow
-*   **PDF**: Embedded directly in custom `<iframe>` layouts.
-*   **DOCX**: Mammoth.js parses the array buffer byte stream to HTML inline.
-*   **XLSX/CSV**: SheetJS reads sheet tables, mapping data to visual grids.
-*   **Images**: Native `<img>` layout rendering.
-
-### 3. Download Flow
-Calls `GET /api/files/download/{file}`. Streams resource bytes with `Content-Disposition: attachment` to trigger browser native download.
-
-### 4. Supported File Types
-*   Document files: `.docx`, `.doc`, `.pdf`, `.txt`, `.md`
-*   Spreadsheets: `.xlsx`, `.xls`, `.csv`
-*   Image files: `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`
-
----
-
-## 📡 REST API Overview
+## API Overview
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/auth/login` | Authenticates user; checks plain-text credentials and role |
-| `GET` | `/api/assessments` | Fetches assessments list, supports `batch`, `timeFilter`, `status`, and `role` parameters |
-| `POST` | `/api/assessments` | Saves new assessment (Teacher) |
-| `POST` | `/api/assessments/draft` | Saves assessment as draft with DRAFT status |
-| `POST` | `/api/assessments/publish` | Saves assessment as published with PUBLISHED status |
-| `PATCH` | `/api/assessments/{id}/publish` | Publishes a draft assessment |
-| `DELETE` | `/api/assessments/{id}` | Deletes assessment record (Teacher) |
-| `GET` | `/api/batches` | Retrieves list of all training batches |
-| `POST` | `/api/batches` | Registers a new batch (prevents name duplicates) |
-| `GET` | `/api/batches/{id}` | Retrieves batch details by ID |
-| `PATCH` | `/api/batches/{id}` | Updates batch configuration fields |
-| `DELETE` | `/api/batches/{id}` | Deletes batch record |
-| `GET` | `/api/submissions` | Fetches submissions, including dynamic virtual pending/missing records |
-| `POST` | `/api/submissions` | Saves student attempt response |
-| `GET` | `/api/submissions/{id}/scorecard` | Fetches detailed scorecard with statistics, correct/wrong counts, and question-by-question review |
-| `PATCH` | `/api/submissions/{id}/grade` | Enters subjective marks score and feedback comments |
-| `POST` | `/api/submissions/bulk-grade` | Bulk grades multiple submissions |
-| `POST` | `/api/submissions/bulk-reviewed` | Bulk marks submissions as reviewed |
-| `POST` | `/api/uploads` | Uploads binary files to backend storage directory |
-| `GET` | `/api/files/preview/{file}` | Streams file inline |
-| `GET` | `/api/files/download/{file}` | Streams file as attachment download |
-| `POST` | `/api/certificates/generate` | Evaluates rules and generates digital certificate metadata |
-| `GET` | `/api/certificates/student/{id}`| Retrieves list of certificates unlocked by learner ID |
-| `GET` | `/api/certificates/{id}` | Retrieves specific certificate verification details |
+| `POST` | `/api/auth/login` | Validates demo email/password profile credentials |
+| `GET` | `/api/assessments` | Retrieves assessments filtered by batch, status, and role |
+| `POST` | `/api/assessments/draft` | Creates a new assessment in DRAFT mode |
+| `POST` | `/api/assessments/publish` | Creates a new assessment in PUBLISHED mode |
+| `PATCH` | `/api/assessments/{id}/publish` | Transitions a draft assessment to PUBLISHED status |
+| `DELETE` | `/api/assessments/{id}` | Deletes assessment record (Teacher only) |
+| `GET` | `/api/batches` | Retrieves list of all batch groups |
+| `POST` | `/api/batches` | Registers a new batch (prevents name duplication) |
+| `GET` | `/api/submissions` | Fetches learner submission list (contains virtual pending/missing records) |
+| `GET` | `/api/submissions/{id}/scorecard` | Fetches scorecard stats, counts, and question review answers |
+| `POST` | `/api/submissions` | Saves solution solve attempt |
+| `PATCH` | `/api/submissions/{id}/grade` | Grades written files and leaves feedback |
+| `POST` | `/api/submissions/bulk-grade` | Scopes grading values across selected entries |
+| `POST` | `/api/submissions/bulk-reviewed` | Marks selected files as reviewed |
+| `POST` | `/api/uploads` | Writes binary files to `./uploads` storage directory |
+| `GET` | `/api/files/preview/{file}` | Streams file content inline for browsers |
+| `GET` | `/api/files/download/{file}` | Streams attachment download headers |
+| `POST` | `/api/certificates/generate` | Generates a digital certificate metadata record |
+| `GET` | `/api/certificates/student/{id}`| Lists certificates earned by student ID |
+| `GET` | `/api/certificates/{id}` | Fetches individual certificate layout values |
 
 ---
 
-## 🗄️ Database Specifications
+## Database Collections
 
-### Collection: `users`
-*   **Purpose**: Manages system accounts and maps batches for learners.
-*   **Fields**: `id`, `name`, `email`, `role`, `avatar`, `password`, `batch`, `rollNumber`.
-
-### Collection: `assessments`
-*   **Purpose**: Stores assessment parameters, batches, and embedded lists of questions.
-*   **Fields**: `id`, `title`, `subject`, `batch`, `instructions`, `questionType`, `totalMarks`, `deadline`, `status`, `fileUrl`, `fileName`, `fileSize`, `batches`, `questions`.
-
-### Collection: `submissions`
-*   **Purpose**: Evaluates candidate responses and stores comments.
-*   **Fields**: `id`, `assessmentId`, `assessmentTitle`, `subject`, `batch`, `learnerId`, `learnerName`, `answers`, `status`, `marksObtained`, `totalMarks`, `feedback`, `submittedAt`, `submittedFileUrl`, `submittedFileName`, `rollNumber`, `deadline`.
+- **`users`**: Contains account profiles, avatars, credentials, and batch assignments.
+- **`assessments`**: Contains assessment titles, instructions, deadline timestamps, status modes (draft/published), batch allocations, and embedded question arrays.
+- **`submissions`**: Contains references to assessments, learner answers map, marks obtained, percentage score, submission files, and teacher comments.
+- **`materials`**: Contains references to course download files and metadata details.
+- **`certificates`**: Contains unique certification identifiers, student keys, scores, and dates.
 
 ---
 
-## 📷 Screenshots
-
-### Login Page
-*(Heading Placeholder)*
-
-### Teacher Dashboard
-*(Heading Placeholder)*
-
-### Learner Dashboard
-*(Heading Placeholder)*
-
-### Assessment Interface
-*(Heading Placeholder)*
-
-### Materials Portal
-*(Heading Placeholder)*
-
-### Submission Hub
-*(Heading Placeholder)*
-
-### Grading Panel
-*(Heading Placeholder)*
+## File Upload, Preview, and Download
+- **Upload**: Handled via `POST /api/uploads`. Renames documents with timestamp prefixes to avoid collisions.
+- **Preview**: Handled by `FilePreviewModal.tsx`:
+  - `.pdf` / `.txt` / `.png` / `.jpg` are rendered using dedicated browser iframe containers.
+  - `.docx` documents are converted to inline HTML markup using Mammoth.js.
+  - `.xlsx` / `.csv` files are parsed into interactive spreadsheets grids using SheetJS.
+- **Download**: Streams file chunks with attachment headers to force download actions.
 
 ---
 
-## 🚀 Future Enhancements
-*   **Redis Caching Layer**: Implement Redis to cache materials and assessments metadata.
-*   **Live WebSockets Notifications**: Alert learners in real time when new assessments are published.
-*   **Containerization**: Dockerize Next.js and Spring Boot applications for consistent deployments.
-*   **JWT Security Integration**: Replace plain-text passwords validation with bcrypt encryption and JWT authentication.
+## Assessment Lifecycle
+```text
+Create (Manual/Excel) ➔ Save as Draft ➔ Publish ➔ Learner Attempt ➔ Auto Grading / Teacher Evaluation ➔ Scorecard Review ➔ Certificate Release (if score >= 90%)
+```
 
 ---
 
-## 🤝 Contributing
-1.  Fork the Project.
-2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`).
-3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`).
-4.  Push to the Branch (`git push origin feature/AmazingFeature`).
-5.  Open a Pull Request.
+## Excel Import Format
+Required spreadsheet layout columns:
+1. `Question`: Question text.
+2. `Option A`: First option choice.
+3. `Option B`: Second option choice.
+4. `Option C`: Third option choice (optional).
+5. `Option D`: Fourth option choice (optional).
+6. `Correct Answer`: String matching the exact correct option text (or letters A, B, C, D).
+7. `Marks`: The question's grade weight.
+8. `Question Type`: Set to `mcq` or `written`.
+9. `Explanation`: Answer explanation text (optional).
 
 ---
 
-## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## Deployment
+
+### Frontend (Vercel)
+1. Add new project on Vercel and import your repository.
+2. Configure **Root Directory** as `assessment-portal`.
+3. Add Environment Variable `NEXT_PUBLIC_API_URL` pointing to backend hosting.
+
+### Backend (Railway/Render)
+1. Add new web service project linking the Java project.
+2. Configure **Root Directory** as `assessment-portal/backend`.
+3. Set environment variable `SPRING_DATA_MONGODB_URI` pointing to your MongoDB Atlas cluster.
+4. Run Maven build command `./mvnw clean package -DskipTests` and start application with `java -jar target/assessment-portal-backend-0.0.1-SNAPSHOT.jar`.
 
 ---
 
-## 👤 Author
-*   **Pardhu Tirumalasetti** - *Full Stack Developer*
-*   **GitHub**: [@Pardhu643](https://github.com/Pardhu643)
-*   **LinkedIn**: [Pardhu Tirumalasetti](https://www.linkedin.com/in/pardhu-tirumalasetti-138379207/)
+## Screenshots
+Screenshots placeholders:
+- Login Page: `assessment-portal/public/images/login-screenshot.png`
+- Teacher Dashboard: `assessment-portal/public/images/teacher-dashboard.png`
+- Learner Dashboard: `assessment-portal/public/images/learner-dashboard.png`
 
 ---
 
-## 💖 Acknowledgements
-*   **Xebia Internship Program** - Structured learning guides and assessment portals review guidelines.
-*   Advanced Agentic Coding Pair Programming assistance.
+## Future Enhancements
+- **Redis Caching**: Cache resource downloads to lower database traffic load.
+- **OAuth Integration**: Secure authorization flows using Google OAuth2 and JWT.
+- **Websockets Feed**: Alert users in real-time about new assessment deadlines.
+
+---
+
+## Author
+**Pardhu Tirumalasetti**
+- GitHub: [Pardhu643](https://github.com/Pardhu643)
